@@ -103,7 +103,6 @@ export function AdminConsole({ defaultBaseURL }: { defaultBaseURL: string }) {
   const [themeOverridesLoaded, setThemeOverridesLoaded] = useState(false);
 
   const api = useMemo(() => ({ baseURL, adminToken }), [baseURL, adminToken]);
-  const providerTypeOptions = useMemo(() => providerTypeOptionsFromData(data), [data]);
   const activeConfig = resourceConfigFor(activeView);
   const activeMeta = activeConfig ?? standaloneViewMeta[activeView] ?? standaloneViewMeta.overview!;
   const simRegistry = useMemo(() => simRegistryFromPlugins(data.plugins), [data.plugins]);
@@ -112,6 +111,7 @@ export function AdminConsole({ defaultBaseURL }: { defaultBaseURL: string }) {
     [data, simSelectionPreference, theme, themeOverrides],
   );
   setActiveLanguage(language);
+  const providerTypeOptions = providerTypeOptionsFromData(data);
 
   useEffect(() => {
     setSIMSelectionPreference(readAdminConsoleSIMSelectionPreference());
