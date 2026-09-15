@@ -627,6 +627,7 @@ export const jaTranslations: Record<string, string> = {
     "仅优先级": "優先度のみ",
     "文本对话": "チャット",
     "向量嵌入": "埋め込み",
+    "本地服务": "ローカルサービス",
     "模拟渠道": "Mock Provider",
     "OpenAI 官方": "OpenAI 公式",
     "OpenAI 兼容": "OpenAI 互換",
