@@ -28,7 +28,7 @@
       "name": "add-metering-evidence",
       "phase": "expand",
       "dialect": "",
-      "checksum": "tokenhub-schema-metering-evidence-v2",
+      "checksum": "4d282c33fb83adcf772a560ddb2b772116e9f6bbd3ecee0a68bda70fc447e50c",
       "lock_timeout_seconds": 30,
       "statement_budget": 10
     },

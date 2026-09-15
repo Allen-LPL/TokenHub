@@ -627,6 +627,7 @@ export const enTranslations: Record<string, string> = {
     "仅优先级": "Priority Only",
     "文本对话": "Chat",
     "向量嵌入": "Embedding",
+    "本地服务": "Local Provider",
     "模拟渠道": "Mock Provider",
     "OpenAI 官方": "OpenAI Official",
     "OpenAI 兼容": "OpenAI Compatible",

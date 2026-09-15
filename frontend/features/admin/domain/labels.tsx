@@ -308,12 +308,14 @@ export function roleLabel(role: string) {
 
 export function providerTypeLabel(type: string | undefined) {
   const normalized = String(type ?? "").trim();
+  if (normalized === "mock") return tx("本地服务");
   return normalized || "-";
 }
 
 export function providerTypeLabelFromData(data: Pick<AppData, "plugins" | "providerCatalog"> & Partial<Pick<AppData, "providerAdapters">>, type: string | undefined) {
   const normalized = String(type ?? "").trim();
   if (!normalized) return "-";
+  if (normalized === "mock") return providerTypeLabel(normalized);
   for (const entry of [...(data.providerCatalog ?? []), ...providerCatalogEntriesFromPluginCapabilities(data.plugins)]) {
     if (entry.type !== normalized) continue;
     const label = String(entry.display_name || entry.name || "").trim();
