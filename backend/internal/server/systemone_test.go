@@ -154,6 +154,38 @@ func TestSystemOneResponseProbabilityTolerance(t *testing.T) {
 	}
 }
 
+func TestSystemOneScoreLegendValues(t *testing.T) {
+	for _, tt := range []struct {
+		name, value string
+		valid       bool
+	}{
+		{"string", `"description"`, true},
+		{"empty string", `""`, true},
+		{"object", `{"nested":[42,true,null]}`, true},
+		{"array", `[42,true,"text"]`, true},
+		{"null", `null`, true},
+		{"number", `42`, false},
+		{"boolean", `false`, false},
+		{"nesting boundary", strings.Repeat("[", 64) + `0` + strings.Repeat("]", 64), true},
+		{"excessive nesting", strings.Repeat("[", 65) + `0` + strings.Repeat("]", 65), false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, entry := range []struct{ key, old string }{{"0", `"0":"low"`}, {"1", `"1":"high"`}} {
+				t.Run(entry.key, func(t *testing.T) {
+					payload := strings.Replace(systemOneFixtureResponse, entry.old, fmt.Sprintf("%q:%s", entry.key, tt.value), 1)
+					var response SystemOneResponse
+					if err := json.Unmarshal([]byte(payload), &response); err != nil {
+						t.Fatal(err)
+					}
+					if err := response.validate(systemOneTestRequest(t)); (err == nil) != tt.valid {
+						t.Fatalf("valid=%v error=%v", tt.valid, err)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestSystemOneGuardrailRedactionPreservesNumbersAndInspectsRubrics(t *testing.T) {
 	req := systemOneTestRequest(t)
 	for _, target := range systemOneGuardrailTargets(&req) {

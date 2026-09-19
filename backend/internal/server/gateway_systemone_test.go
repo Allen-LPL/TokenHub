@@ -91,6 +91,16 @@ func TestGatewaySystemOneNativeContractAndBilling(t *testing.T) {
 	}
 }
 
+func TestGatewaySystemOneRejectsMalformedLegend(t *testing.T) {
+	server, _ := newSystemOneTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		writeFixture(t, w, strings.Replace(systemOneFixtureResponse, `"legend":{"0":"low","1":"high"}`, `"legend":{"0":42,"1":false}`, 1))
+	})
+	response := doJSON(t, server.Handler(), "POST", "/v1/systemone", systemOneTestRequest(t), "thk_systemone_test")
+	if response.Code != http.StatusBadGateway || !strings.Contains(response.Body, `"provider_invalid_response"`) || strings.Contains(response.Body, `"legend"`) {
+		t.Fatalf("expected sanitized invalid-response error, got status=%d body=%s", response.Code, response.Body)
+	}
+}
+
 func TestGatewaySystemOneRejectsBeforeUpstream(t *testing.T) {
 	var calls atomic.Int32
 	server, store := newSystemOneTestServer(t, func(w http.ResponseWriter, r *http.Request) {

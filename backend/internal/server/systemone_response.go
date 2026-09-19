@@ -68,7 +68,7 @@ func (response SystemOneResponse) validate(req SystemOneRequest) error {
 			expected = make(map[string]json.RawMessage, len(levels))
 			for index := range levels {
 				key := strconv.Itoa(index)
-				if _, ok := answer.Legend[key]; !ok {
+				if value, ok := answer.Legend[key]; !ok || !systemOneEntry(value, true) {
 					return invalidSystemOneResponse()
 				}
 				expected[key] = nil
