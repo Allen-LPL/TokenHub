@@ -27,6 +27,21 @@ assert.equal(result.answers.urgent.type, "noul");
 assert.ok(result.answers.urgent.noul >= 0 && result.answers.urgent.noul <= 1);
 assert.equal(result.answers.severity.type, "score");
 assert.ok(result.answers.severity.score >= 0 && result.answers.severity.score <= 1);
+assert.deepEqual(result.answers.severity.legend, { 0: "low", 1: "high" });
 assert.ok(Number.isSafeInteger(result.usage.input_tokens) && result.usage.input_tokens >= 0);
 assert.ok(Number.isSafeInteger(result.usage.output_tokens) && result.usage.output_tokens >= 0);
-console.log("System One SDK smoke passed: choice, noul, score, and native usage.");
+const optionalResult = await client.systemOne({
+  model: process.env.TOKENHUB_MODEL || "jev-1.13.0",
+  state: null,
+  questions: {
+    intent: { type: "choice", criteria: { refund: "Return funds.", other: "Another request." } },
+    urgent: { type: "noul", criteria: null },
+    severity: { type: "score", criteria: ["low", "high"] },
+  },
+});
+assert.deepEqual(Object.keys(optionalResult.answers).sort(), ["intent", "severity", "urgent"]);
+assert.equal(optionalResult.answers.intent.type, "choice");
+assert.equal(optionalResult.answers.urgent.type, "noul");
+assert.equal(optionalResult.answers.severity.type, "score");
+assert.deepEqual(optionalResult.answers.severity.legend, { 0: "low", 1: "high" });
+console.log("System One SDK smoke passed: choice, noul, score, native usage, and optional/null inputs.");

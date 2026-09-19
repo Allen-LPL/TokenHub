@@ -30,10 +30,35 @@ func TestSystemOneRequestValidation(t *testing.T) {
 		{"string state", func(r *SystemOneRequest) { r.State = json.RawMessage(`"hello"`) }, true},
 		{"array state", func(r *SystemOneRequest) { r.State = json.RawMessage(`[null,42,true,{"text":"hi"}]`) }, true},
 		{"missing model", func(r *SystemOneRequest) { r.Model = " " }, false},
-		{"null state", func(r *SystemOneRequest) { r.State = json.RawMessage(`null`) }, false},
+		{"null state", func(r *SystemOneRequest) { r.State = json.RawMessage(`null`) }, true},
+		{"missing state", func(r *SystemOneRequest) { r.State = nil }, false},
+		{"boolean state", func(r *SystemOneRequest) { r.State = json.RawMessage(`false`) }, false},
 		{"numeric state", func(r *SystemOneRequest) { r.State = json.RawMessage(`42`) }, false},
 		{"missing questions", func(r *SystemOneRequest) { r.Questions = nil }, false},
-		{"missing instructions", func(r *SystemOneRequest) { r.Questions["urgent"] = SystemOneQuestion{Type: "noul"} }, false},
+		{"omitted noul instructions", func(r *SystemOneRequest) { r.Questions["urgent"] = SystemOneQuestion{Type: "noul"} }, true},
+		{"null noul criteria", func(r *SystemOneRequest) {
+			r.Questions["urgent"] = SystemOneQuestion{Type: "noul", Criteria: json.RawMessage(`null`)}
+		}, true},
+		{"omitted choice instructions", func(r *SystemOneRequest) {
+			q := r.Questions["intent"]
+			q.Instructions = nil
+			r.Questions["intent"] = q
+		}, true},
+		{"omitted score instructions", func(r *SystemOneRequest) {
+			q := r.Questions["severity"]
+			q.Instructions = nil
+			r.Questions["severity"] = q
+		}, true},
+		{"null choice criteria", func(r *SystemOneRequest) {
+			q := r.Questions["intent"]
+			q.Criteria = json.RawMessage(`null`)
+			r.Questions["intent"] = q
+		}, false},
+		{"null score criteria", func(r *SystemOneRequest) {
+			q := r.Questions["severity"]
+			q.Criteria = json.RawMessage(`null`)
+			r.Questions["severity"] = q
+		}, false},
 		{"unknown primitive", func(r *SystemOneRequest) {
 			r.Questions["urgent"] = SystemOneQuestion{Type: "chat", Instructions: json.RawMessage(`null`)}
 		}, false},
@@ -170,14 +195,22 @@ func TestSystemOneScoreLegendValues(t *testing.T) {
 		{"excessive nesting", strings.Repeat("[", 65) + `0` + strings.Repeat("]", 65), false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, entry := range []struct{ key, old string }{{"0", `"0":"low"`}, {"1", `"1":"high"`}} {
+			for index, entry := range []struct{ key, old string }{{"0", `"0":"low"`}, {"1", `"1":"high"`}} {
 				t.Run(entry.key, func(t *testing.T) {
 					payload := strings.Replace(systemOneFixtureResponse, entry.old, fmt.Sprintf("%q:%s", entry.key, tt.value), 1)
 					var response SystemOneResponse
 					if err := json.Unmarshal([]byte(payload), &response); err != nil {
 						t.Fatal(err)
 					}
-					if err := response.validate(systemOneTestRequest(t)); (err == nil) != tt.valid {
+					req := systemOneTestRequest(t)
+					if tt.valid {
+						levels := []json.RawMessage{json.RawMessage(`"low"`), json.RawMessage(`"high"`)}
+						levels[index] = json.RawMessage(tt.value)
+						question := req.Questions["severity"]
+						question.Criteria, _ = json.Marshal(levels)
+						req.Questions["severity"] = question
+					}
+					if err := response.validate(req); (err == nil) != tt.valid {
 						t.Fatalf("valid=%v error=%v", tt.valid, err)
 					}
 				})

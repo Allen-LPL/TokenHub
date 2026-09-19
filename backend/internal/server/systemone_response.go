@@ -26,6 +26,10 @@ func (response SystemOneResponse) meteredUsage() Usage {
 }
 
 func (response SystemOneResponse) validate(req SystemOneRequest) error {
+	return response.validateWithLegendRequest(req, req)
+}
+
+func (response SystemOneResponse) validateWithLegendRequest(req, legendRequest SystemOneRequest) error {
 	if strings.TrimSpace(response.Model) == "" || response.meteredUsage().MeteringInvalid || len(response.Answers) != len(req.Questions) {
 		return invalidSystemOneResponse()
 	}
@@ -65,10 +69,15 @@ func (response SystemOneResponse) validate(req SystemOneRequest) error {
 			if err := json.Unmarshal(question.Criteria, &levels); err != nil || !systemOneNumber(answer.Score, 0, float64(len(levels)-1)) || len(answer.Legend) != len(levels) {
 				return invalidSystemOneResponse()
 			}
+			var effectiveLevels []json.RawMessage
+			effectiveQuestion := legendRequest.Questions[id]
+			if effectiveQuestion.Type != "score" || json.Unmarshal(effectiveQuestion.Criteria, &effectiveLevels) != nil || len(effectiveLevels) != len(levels) {
+				return invalidSystemOneResponse()
+			}
 			expected = make(map[string]json.RawMessage, len(levels))
 			for index := range levels {
 				key := strconv.Itoa(index)
-				if value, ok := answer.Legend[key]; !ok || !systemOneEntry(value, true) {
+				if value, ok := answer.Legend[key]; !ok || !systemOneEntry(value, true) || !systemOneEntriesEqual(value, effectiveLevels[index]) {
 					return invalidSystemOneResponse()
 				}
 				expected[key] = nil

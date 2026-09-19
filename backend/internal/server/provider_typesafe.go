@@ -40,7 +40,7 @@ func (a TypeSafeAdapter) SystemOne(ctx context.Context, provider Provider, provi
 		return result, Usage{MeteringInvalid: true}, invalidSystemOneResponse()
 	}
 	usage := result.meteredUsage()
-	usage.UpstreamRequestID = response.Header.Get("x-request-id")
+	usage.UpstreamRequestID = firstNonEmpty(response.Header.Get("x-typesafe-request-id"), response.Header.Get("x-request-id"))
 	usage.ResponseHeaders = response.Header.Clone()
 	return result, usage, result.validate(req)
 }

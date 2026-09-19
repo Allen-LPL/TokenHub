@@ -85,6 +85,15 @@ func (s *Server) handleSystemOne(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+	// Keep the winning route's rubric private and unwrap before hooks or serialization.
+	result, ok := resp.(systemOneRouteResult)
+	if !ok {
+		err := invalidSystemOneResponse()
+		s.finishFailedRoutedCall(r, routed, attempts, usage, err, auditPayload)
+		writeError(w, r, err)
+		return
+	}
+	resp = result.response
 	s.store.MarkRouteUsed(route.Route.ID)
 	s.store.MarkProviderResourceUsed(routeResourceID(route))
 	resp, err = s.runGatewayResponsePostHooks(r.Context(), routed.Call, route, resp, providerRouteProtocolSystemOne)
@@ -105,7 +114,7 @@ func (s *Server) handleSystemOne(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	if err := validateSystemOneGatewayResponse(resp, req); err != nil {
+	if err := validateSystemOneGatewayResponse(resp, req, result.request); err != nil {
 		s.finishFailedRoutedCall(r, routed, attempts, usage, err, auditPayload)
 		writeError(w, r, err)
 		return

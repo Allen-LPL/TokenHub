@@ -17,7 +17,7 @@ test("typesafe decision modality and input-only pricing can be configured", asyn
   await expect(row).toBeVisible();
   await row.getByRole("button", { name: "编辑", exact: true }).click();
   const dialog = page.locator("form.modal");
-  await dialog.getByRole("combobox", { name: "能力", exact: true }).selectOption("decision");
+  await dialog.getByRole("combobox", { name: "能力", exact: true }).selectOption({ label: "决策" });
   await expect(dialog.getByRole("combobox", { name: "能力", exact: true })).toHaveValue("decision");
   await dialog.getByRole("combobox", { name: "模型类型", exact: true }).selectOption("custom");
   await dialog.getByLabel("系列", { exact: true }).fill("jev");

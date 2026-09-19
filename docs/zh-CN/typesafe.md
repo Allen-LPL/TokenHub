@@ -41,10 +41,10 @@ curl https://tokenhub.example/v1/systemone \
 | 原语 | 判断标准 | 结果 |
 | --- | --- | --- |
 | `choice` | 标签到描述的非空对象 | `choice`、各标签的 `probabilities` 和 `confidence` |
-| `noul` | 可选对象，键为 `true` 和／或 `false` | `[0, 1]` 范围内的 `noul`；不要求置信度字段 |
+| `noul` | 可选对象，键为 `true` 和／或 `false`，也可为 `null` | `[0, 1]` 范围内的 `noul`；不要求置信度字段 |
 | `score` | 至少两级描述组成的有序数组 | `[0, N-1]` 范围内的期望等级索引 `score`，以及 `legend`、各等级的 `probabilities` 和 `confidence` |
 
-`state` 接受字符串、JSON 对象或数组。每个问题必须包含 `instructions`，值可以是字符串、对象、数组或 `null`；判断标准中的描述支持相同类型。嵌套值保留 JSON 数值精度。多个问题共享状态、独立评估。低置信度属于正常结果，会原样返回，不自动重试或升级到其他模型。应用自行设定接受阈值。
+`state` 必填，接受字符串、JSON 对象、数组或 `null`。每个问题可以省略 `instructions`，也可以传入字符串、对象、数组或 `null`；判断标准中的描述支持相同类型。转发时保留省略字段与显式 `null` 的区别，与 [SDK 0.6.0 类型定义](https://github.com/typesafe-ai/typesafe-sdk-js/blob/v0.6.0/src/types.ts) 一致。嵌套值保留 JSON 数值精度。多个问题共享状态、独立评估。低置信度属于正常结果，会原样返回，不自动重试或升级到其他模型。应用自行设定接受阈值。
 
 网关接受 1–1,024 个问题，每个问题最多 4,096 个判断标准，每个 JSON 条目最多嵌套 64 层容器，同时受通用请求体大小限制。目录按上游文档记录 64,000 token 总上下文和 32,000 token 的「状态加最大问题」限制。TokenHub 为配额准入估算 token，依赖 TypeSafe 按其 tokenizer 校验实际上下文。流式参数和聊天专属字段会被拒绝。JSON 格式错误或未知字段返回 `400`，原语语义校验失败返回 `422`。
 
@@ -63,6 +63,8 @@ TOKENHUB_MODEL=jev-1.13.0 npm run test:systemone
 本阶段只覆盖 `systemOne()`，不承诺完整 TypeSafe SDK 兼容。TokenHub 保持已有的多协议 `/v1/models` 契约，不为 SDK 的 `models.list()` 模拟 TypeSafe 模型列表响应。OpenAI Chat、Responses、Embeddings 和流式协议保持不变。现有聊天 Playground 不执行 Jev 请求。
 
 ## 治理与计费
+
+评分结果的每个 `legend` 条目必须与实际发送到上游的对应判断标准相等。请求钩子转换判断标准后，校验使用成功路由的实际标准，响应保留这些值，包括脱敏结果。响应钩子不能替换为其他判断标准。问题 ID、答案类型、选项标签和评分等级数仍须与公共前处理后的请求一致。
 
 请求复用项目鉴权、模型权限、配额、路由选择、Provider 凭据、错误分类、用量保存、请求日志和 Trace 导出。隐私和安全钩子收到 `route_protocol: "systemone"`。确定性出站检查覆盖状态、问题 ID、指令和判断标准，包括嵌套对象键。若策略要求脱敏结构性键，网关会拒绝请求，避免改变答案契约。可选的请求前处理、路由、Provider 调用、响应和用量钩子遵循已有网关生命周期。本阶段不对 System One 响应启用缓存。
 

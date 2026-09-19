@@ -41,10 +41,10 @@ The native response contains `model`, `answers`, and `usage.input_tokens` / `usa
 | Primitive | Criteria | Answer |
 | --- | --- | --- |
 | `choice` | Nonempty object of label-to-description entries | `choice`, label `probabilities`, and `confidence` |
-| `noul` | Optional object with `true` and/or `false` descriptions | `noul` in `[0, 1]`; no confidence field is required |
+| `noul` | Optional object with `true` and/or `false` descriptions, or `null` | `noul` in `[0, 1]`; no confidence field is required |
 | `score` | Ordered array of at least two level descriptions | Expected level index `score` in `[0, N-1]`, `legend`, level `probabilities`, and `confidence` |
 
-`state` accepts a string, JSON object, or array. Each question must contain `instructions`, which may be a string, object, array, or `null`; criterion descriptions accept the same types. Nested values retain JSON numeric precision. Questions share state and are evaluated independently. Low confidence is a normal result, returned without automatic retry or escalation. Applications define their own acceptance thresholds.
+`state` is required and accepts a string, JSON object, array, or `null`. Each question may omit `instructions` or provide a string, object, array, or `null`; criterion descriptions accept the same types. Omitted fields and explicit `null` values remain distinct when forwarded, following the [SDK 0.6.0 types](https://github.com/typesafe-ai/typesafe-sdk-js/blob/v0.6.0/src/types.ts). Nested values retain JSON numeric precision. Questions share state and are evaluated independently. Low confidence is a normal result, returned without automatic retry or escalation. Applications define their own acceptance thresholds.
 
 The gateway accepts 1–1,024 questions, at most 4,096 criteria per question, and at most 64 nested container levels per JSON entry. Normal request-body limits also apply. The catalog records a 64,000-token total context and a 32,000-token state-plus-largest-question limit from the upstream model documentation. TokenHub estimates tokens for quota admission; TypeSafe remains authoritative for tokenizer-specific context validation. Streaming and chat-only fields are rejected. Invalid JSON or unknown fields return `400`; invalid primitive semantics return `422`.
 
@@ -63,6 +63,8 @@ TOKENHUB_MODEL=jev-1.13.0 npm run test:systemone
 This phase covers `systemOne()`, not the complete TypeSafe SDK surface. TokenHub retains its existing multi-protocol `/v1/models` contract; it does not emulate TypeSafe's model-list response for SDK `models.list()`. OpenAI chat, Responses, embeddings, and streaming contracts are unchanged. The existing chat playground does not execute Jev.
 
 ## Governance and accounting
+
+Each score `legend` entry must equal the corresponding criterion sent upstream. When a request hook transforms criteria, validation uses the winning route's effective criteria and preserves those values in the response, including any masking. Response hooks cannot replace the legend with different criteria. Question IDs, answer types, choice labels, and score-level counts must still match the shared request after preprocessing.
 
 Requests use project authentication, model permissions, quotas, route selection, Provider credentials, error classification, usage persistence, request logs, and trace export. Privacy and guardrail hooks receive `route_protocol: "systemone"`. Deterministic outbound checks inspect state, question IDs, instructions, and criteria, including nested object keys. A policy requesting redaction of a structural key blocks the request rather than renaming the response contract. Optional pre-request, route, Provider-call, response, and usage hooks follow the existing gateway lifecycle. System One does not use response caching in this phase.
 

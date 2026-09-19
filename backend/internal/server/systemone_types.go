@@ -24,7 +24,7 @@ type SystemOneRequest struct {
 
 type SystemOneQuestion struct {
 	Type         string          `json:"type"`
-	Instructions json.RawMessage `json:"instructions"`
+	Instructions json.RawMessage `json:"instructions,omitempty"`
 	Criteria     json.RawMessage `json:"criteria,omitempty"`
 }
 
@@ -59,19 +59,19 @@ func (r SystemOneRequest) validate() error {
 	if strings.TrimSpace(r.Model) == "" {
 		return NewHTTPError(http.StatusBadRequest, "missing_model", "model is required")
 	}
-	if !systemOneEntry(r.State, false) {
-		return systemOneInvalid("state must be a string, object, or array")
+	if !systemOneEntry(r.State, true) {
+		return systemOneInvalid("state must be a string, object, array, or null")
 	}
 	if len(r.Questions) == 0 || len(r.Questions) > systemOneMaxQuestions {
 		return systemOneInvalid("questions must contain between 1 and 1024 entries")
 	}
 	for _, question := range r.Questions {
-		if !systemOneEntry(question.Instructions, true) {
+		if len(question.Instructions) != 0 && !systemOneEntry(question.Instructions, true) {
 			return systemOneInvalid("instructions must be a string, object, array, or null")
 		}
 		switch question.Type {
 		case "choice", "noul":
-			if question.Type == "noul" && len(question.Criteria) == 0 {
+			if question.Type == "noul" && (len(question.Criteria) == 0 || bytes.Equal(bytes.TrimSpace(question.Criteria), []byte("null"))) {
 				continue
 			}
 			var criteria map[string]json.RawMessage

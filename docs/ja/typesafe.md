@@ -41,10 +41,10 @@ curl https://tokenhub.example/v1/systemone \
 | Primitive | Criteria | 回答 |
 | --- | --- | --- |
 | `choice` | ラベルから説明への空でないオブジェクト | `choice`、ラベルごとの `probabilities`、`confidence` |
-| `noul` | `true` と／または `false` を説明する任意のオブジェクト | `[0, 1]` の `noul`。confidence は必須ではありません |
+| `noul` | `true` と／または `false` を説明する任意のオブジェクト、または `null` | `[0, 1]` の `noul`。confidence は必須ではありません |
 | `score` | 2 段階以上の説明を並べた配列 | `[0, N-1]` の期待レベル索引 `score`、`legend`、レベルごとの `probabilities`、`confidence` |
 
-`state` は文字列、JSON オブジェクト、配列を受け取ります。各質問には `instructions` が必要で、文字列、オブジェクト、配列、`null` を指定できます。criteria の説明も同じ型を受け取ります。ネストした JSON 数値の精度は保持されます。質問は状態を共有し、独立して評価されます。低 confidence は通常の結果として返され、自動再試行やエスカレーションは行われません。採用閾値はアプリケーションで設定します。
+`state` は必須で、文字列、JSON オブジェクト、配列、`null` を受け取ります。各質問の `instructions` は省略でき、文字列、オブジェクト、配列、`null` も指定できます。criteria の説明も同じ型を受け取ります。転送時には、[SDK 0.6.0 の型定義](https://github.com/typesafe-ai/typesafe-sdk-js/blob/v0.6.0/src/types.ts) に従い、省略と明示的な `null` を区別します。ネストした JSON 数値の精度は保持されます。質問は状態を共有し、独立して評価されます。低 confidence は通常の結果として返され、自動再試行やエスカレーションは行われません。採用閾値はアプリケーションで設定します。
 
 ゲートウェイの上限は 1–1,024 質問、質問ごとに 4,096 criteria、JSON エントリーごとに 64 階層のコンテナです。通常のリクエストサイズ制限も適用されます。上流ドキュメントに基づき、カタログには合計 64,000 token と「状態＋最大質問」32,000 token の制限を記録しています。TokenHub はクォータ受け入れのために token を推定し、tokenizer 固有の検証は TypeSafe が行います。ストリーミングとチャット専用フィールドは拒否されます。不正な JSON や未知のフィールドは `400`、primitive の意味的検証エラーは `422` です。
 
@@ -63,6 +63,8 @@ TOKENHUB_MODEL=jev-1.13.0 npm run test:systemone
 この段階は `systemOne()` のみを対象とし、TypeSafe SDK 全体の互換性は提供しません。TokenHub の既存の複数プロトコル用 `/v1/models` 契約は保持され、SDK の `models.list()` 用 TypeSafe 応答は模倣しません。OpenAI Chat、Responses、Embeddings、ストリーミング契約は変更しません。既存のチャット Playground では Jev を実行できません。
 
 ## ガバナンスと課金
+
+スコアの各 `legend` エントリーは、上流に送信した対応する criterion と一致する必要があります。リクエスト hook が criteria を変換した場合は、成功したルートの実際の criteria で検証し、マスキングを含むその値を応答に保持します。応答 hook は別の criteria に置き換えられません。質問 ID、回答型、選択肢ラベル、スコアの段階数は、共通の前処理後のリクエストと一致する必要があります。
 
 プロジェクト認証、モデル権限、クォータ、ルート選択、Provider 認証情報、エラー分類、使用量保存、リクエストログ、Trace export を再利用します。privacy と guardrail hook は `route_protocol: "systemone"` を受け取ります。決定的な送信前チェックは state、質問 ID、instructions、criteria、ネストしたオブジェクトキーを検査します。構造上のキーのマスキングが必要な場合は、回答契約を変更せずリクエストを拒否します。任意の前処理、ルート、Provider 呼び出し、応答、使用量 hook は既存のゲートウェイライフサイクルに従います。この段階では System One 応答をキャッシュしません。
 

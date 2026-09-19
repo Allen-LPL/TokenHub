@@ -29,7 +29,8 @@ func TestTypeSafeAdapterNativeRequestAndUsage(t *testing.T) {
 		if req.Model != "jev-latest" || !strings.Contains(string(req.State), "9007199254740993") || len(req.Questions) != 3 {
 			t.Errorf("request model or payload changed: %+v", req)
 		}
-		w.Header().Set("X-Request-Id", "typesafe-request-123")
+		w.Header().Set("X-Typesafe-Request-Id", "typesafe-request-123")
+		w.Header().Set("X-Request-Id", "generic-request-456")
 		writeFixture(t, w, systemOneFixtureResponse)
 	}))
 	defer upstream.Close()

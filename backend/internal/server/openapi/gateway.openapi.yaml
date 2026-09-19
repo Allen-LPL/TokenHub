@@ -1324,7 +1324,7 @@ components:
           minLength: 1
           description: Published TokenHub model name; the route supplies the upstream model name.
         state:
-          type: [string, object, array]
+          type: [string, object, array, "null"]
           description: Shared context for all questions. Nested JSON values retain their original numeric precision.
         questions:
           type: object
@@ -1355,7 +1355,7 @@ components:
     SystemOneChoiceQuestion:
       type: object
       additionalProperties: false
-      required: [type, instructions, criteria]
+      required: [type, criteria]
       properties:
         type:
           const: choice
@@ -1370,14 +1370,14 @@ components:
     SystemOneNoulQuestion:
       type: object
       additionalProperties: false
-      required: [type, instructions]
+      required: [type]
       properties:
         type:
           const: noul
         instructions:
           $ref: "#/components/schemas/SystemOneEntry"
         criteria:
-          type: object
+          type: [object, "null"]
           additionalProperties: false
           properties:
             "true":
@@ -1387,7 +1387,7 @@ components:
     SystemOneScoreQuestion:
       type: object
       additionalProperties: false
-      required: [type, instructions, criteria]
+      required: [type, criteria]
       properties:
         type:
           const: score

@@ -38,7 +38,7 @@ func TestGatewaySystemOneNativeContractAndBilling(t *testing.T) {
 	var calls atomic.Int32
 	server, store := newSystemOneTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		w.Header().Set("x-request-id", "upstream-jev-test")
+		w.Header().Set("x-typesafe-request-id", "upstream-jev-test")
 		writeFixture(t, w, systemOneFixtureResponse)
 	})
 	before := len(store.ListUsageRecords())
