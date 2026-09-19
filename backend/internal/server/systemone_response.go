@@ -85,8 +85,9 @@ func (response SystemOneResponse) validate(req SystemOneRequest) error {
 			}
 			sum += *value
 		}
-		// Allow one percentage point of cumulative rounding error.
-		if math.Abs(sum-1) > 0.01 {
+		// Keep the one-percentage-point tolerance inclusive despite floating-point rounding.
+		const roundingEpsilon = 1e-12
+		if math.Abs(sum-1) > 0.01+roundingEpsilon {
 			return invalidSystemOneResponse()
 		}
 	}

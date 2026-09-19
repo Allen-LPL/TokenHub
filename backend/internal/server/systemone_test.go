@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -119,6 +120,37 @@ func TestSystemOneResponseValidation(t *testing.T) {
 	nonfinite := math.Inf(1)
 	if systemOneNumber(&nonfinite, 0, 1) {
 		t.Fatal("nonfinite value accepted")
+	}
+}
+
+func TestSystemOneResponseProbabilityTolerance(t *testing.T) {
+	for _, primitive := range []struct{ name, old, format string }{
+		{"choice", `"refund":0.51,"other":0.49`, `"refund":%s,"other":0.5`},
+		{"score", `"0":0.25,"1":0.75`, `"0":%s,"1":0.5`},
+	} {
+		t.Run(primitive.name, func(t *testing.T) {
+			for _, tt := range []struct {
+				name, probability string
+				valid             bool
+			}{
+				{"sum one", "0.5", true},
+				{"lower boundary", "0.49", true},
+				{"upper boundary", "0.51", true},
+				{"below lower boundary", "0.489999999", false},
+				{"above upper boundary", "0.510000001", false},
+			} {
+				t.Run(tt.name, func(t *testing.T) {
+					payload := strings.Replace(systemOneFixtureResponse, primitive.old, fmt.Sprintf(primitive.format, tt.probability), 1)
+					var response SystemOneResponse
+					if err := json.Unmarshal([]byte(payload), &response); err != nil {
+						t.Fatal(err)
+					}
+					if err := response.validate(systemOneTestRequest(t)); (err == nil) != tt.valid {
+						t.Fatalf("valid=%v error=%v", tt.valid, err)
+					}
+				})
+			}
+		})
 	}
 }
 
