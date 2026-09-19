@@ -38,6 +38,8 @@ curl https://tokenhub.example/v1/systemone \
 
 ネイティブ応答は `model`、`answers`、`usage.input_tokens` / `usage.output_tokens` を含みます。回答キーは質問キーと一致します。応答モデルは上流で解決されたバージョンです。リクエストログには公開モデル名とルートの上流モデル名も保存されます。
 
+成功応答には TokenHub の `x-request-id` が含まれ、成功した上流が ID を報告した場合は `x-typesafe-request-id` も含まれます。SDK の `client.systemOne(...).withResponse().requestId` は後者を読み取ります。両ヘッダーはブラウザクライアントにも公開され、上流 ID がない場合は補完しません。
+
 | Primitive | Criteria | 回答 |
 | --- | --- | --- |
 | `choice` | ラベルから説明への空でないオブジェクト | `choice`、ラベルごとの `probabilities`、`confidence` |

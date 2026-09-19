@@ -122,6 +122,10 @@ func (s *Server) handleSystemOne(w http.ResponseWriter, r *http.Request) {
 	attempts = attemptsWithAttributedUsage(routed.Call, attempts, route, usage)
 	s.finishSuccessfulRoutedCall(r, routed, route, usage, attempts, auditPayload, resp)
 	w.Header().Set("x-request-id", routed.Call.RequestID)
+	if usage.UpstreamRequestID != "" {
+		w.Header().Set("x-typesafe-request-id", usage.UpstreamRequestID)
+	}
+	w.Header().Add("access-control-expose-headers", "x-request-id, x-typesafe-request-id")
 	s.writeRouteHeaders(w, routed.Call, route, len(attempts))
 	writeJSON(w, http.StatusOK, resp)
 }

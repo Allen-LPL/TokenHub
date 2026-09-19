@@ -52,9 +52,12 @@ func TestGatewaySystemOnePreservesSDKOptionalAndNullInputs(t *testing.T) {
 				}
 				req.Questions[id] = q
 			}
-			response := doJSON(t, server.Handler(), "POST", "/v1/systemone", req, "thk_systemone_test")
+			response := doGuardrailProtocolRequest(t, server.Handler(), "/v1/systemone", req, "thk_systemone_test")
 			if response.Code != http.StatusOK || calls != 1 {
 				t.Fatalf("status=%d calls=%d body=%s", response.Code, calls, response.Body)
+			}
+			if response.Header().Get("x-typesafe-request-id") != "" {
+				t.Fatalf("missing upstream request ID was invented: %v", response.Header())
 			}
 		})
 	}

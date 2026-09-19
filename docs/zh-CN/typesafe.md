@@ -38,6 +38,8 @@ curl https://tokenhub.example/v1/systemone \
 
 原生响应包含 `model`、`answers` 和 `usage.input_tokens` / `usage.output_tokens`。答案键与问题键一致。响应中的模型名是上游解析后的版本；请求日志同时保留对外模型名和路由配置的上游模型名。
 
+成功响应包含 TokenHub 的 `x-request-id`；成功上游报告请求 ID 时，还包含 `x-typesafe-request-id`。SDK 的 `client.systemOne(...).withResponse().requestId` 读取后者。两个响应头均向浏览器客户端开放读取；上游未报告 ID 时，不补造该值。
+
 | 原语 | 判断标准 | 结果 |
 | --- | --- | --- |
 | `choice` | 标签到描述的非空对象 | `choice`、各标签的 `probabilities` 和 `confidence` |

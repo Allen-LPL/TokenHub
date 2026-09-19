@@ -38,6 +38,8 @@ curl https://tokenhub.example/v1/systemone \
 
 The native response contains `model`, `answers`, and `usage.input_tokens` / `usage.output_tokens`. Answer keys match question keys. The response model is the upstream resolved version; request logs also retain the published model and route's upstream model name.
 
+Successful responses include TokenHub's `x-request-id` and, when reported by the winning upstream, `x-typesafe-request-id`. The SDK's `client.systemOne(...).withResponse().requestId` reads the latter. Both headers are exposed to browser clients; a missing upstream ID remains absent.
+
 | Primitive | Criteria | Answer |
 | --- | --- | --- |
 | `choice` | Nonempty object of label-to-description entries | `choice`, label `probabilities`, and `confidence` |

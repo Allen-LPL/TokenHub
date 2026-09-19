@@ -56,6 +56,12 @@ func TestGatewaySystemOneNativeContractAndBilling(t *testing.T) {
 	if resp.Header().Get("x-request-id") == "" || calls.Load() != 1 {
 		t.Fatalf("missing request ID or retried low-confidence response: %d", calls.Load())
 	}
+	if resp.Header().Get("x-typesafe-request-id") != "upstream-jev-test" || resp.Header().Get("x-request-id") == resp.Header().Get("x-typesafe-request-id") {
+		t.Fatalf("native and gateway request IDs were not preserved: %v", resp.Header())
+	}
+	if !strings.Contains(resp.Header().Get("access-control-expose-headers"), "x-typesafe-request-id") {
+		t.Fatal("native request ID is not exposed to browser SDK clients")
+	}
 	records := store.ListUsageRecords()
 	if len(records) != before+1 {
 		t.Fatalf("usage count=%d before=%d", len(records), before)

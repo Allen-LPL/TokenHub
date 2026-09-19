@@ -10,7 +10,7 @@ const apiKey = process.env.TOKENHUB_API_KEY;
 if (!apiKey) throw new Error("TOKENHUB_API_KEY is required.");
 const baseURL = (process.env.TOKENHUB_BASE_URL || "http://localhost:8080").replace(/\/+$/, "").replace(/\/v1$/, "");
 const client = new TypeSafeClient({ apiKey, baseURL, retry: { maxRetries: 0 }, timeout: 30_000 });
-const result = await client.systemOne({
+const { data: result, response, requestId } = await client.systemOne({
   model: process.env.TOKENHUB_MODEL || "jev-1.13.0",
   state: "Please refund this order.",
   questions: {
@@ -18,7 +18,11 @@ const result = await client.systemOne({
     urgent: { type: "noul", instructions: "Is immediate attention required?" },
     severity: { type: "score", instructions: "Assess urgency.", criteria: ["low", "high"] },
   },
-});
+}).withResponse();
+assert.ok(requestId, "The upstream request ID must be available through withResponse().");
+assert.equal(requestId, response.headers.get("x-typesafe-request-id"));
+assert.ok(response.headers.get("x-request-id"), "The TokenHub request ID must remain available.");
+assert.notEqual(requestId, response.headers.get("x-request-id"));
 assert.equal(typeof result.model, "string");
 assert.deepEqual(Object.keys(result.answers).sort(), ["intent", "severity", "urgent"]);
 assert.equal(result.answers.intent.type, "choice");

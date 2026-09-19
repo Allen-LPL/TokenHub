@@ -128,10 +128,12 @@ func TestGatewaySystemOneLegendUsesWinningRoute(t *testing.T) {
 	primaryCalls, backupCalls := 0, 0
 	server, store := newSystemOneTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		primaryCalls++
+		w.Header().Set("x-typesafe-request-id", "failed-route-id")
 		w.WriteHeader(http.StatusTooManyRequests)
 	})
 	backup := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		backupCalls++
+		w.Header().Set("x-typesafe-request-id", "winning-route-id")
 		var req SystemOneRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Error(err)
@@ -162,8 +164,11 @@ func TestGatewaySystemOneLegendUsesWinningRoute(t *testing.T) {
 		req.Questions["severity"] = q
 		return rawProviderRequestPatch(t, req), nil
 	})
-	response := doJSON(t, server.Handler(), "POST", "/v1/systemone", systemOneTestRequest(t), "thk_systemone_test")
-	if response.Code != 200 || primaryCalls != 1 || backupCalls != 1 || transforms != 2 || !strings.Contains(response.Body, `"0":"route 2"`) {
+	response := doGuardrailProtocolRequest(t, server.Handler(), "/v1/systemone", systemOneTestRequest(t), "thk_systemone_test")
+	if response.Code != 200 || primaryCalls != 1 || backupCalls != 1 || transforms != 2 || !strings.Contains(response.Body.String(), `"0":"route 2"`) {
 		t.Fatalf("status=%d primary=%d backup=%d transforms=%d body=%s", response.Code, primaryCalls, backupCalls, transforms, response.Body)
+	}
+	if response.Header().Get("x-typesafe-request-id") != "winning-route-id" {
+		t.Fatalf("winning request ID was not forwarded: %v", response.Header())
 	}
 }

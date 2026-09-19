@@ -448,10 +448,14 @@ paths:
               $ref: "#/components/schemas/SystemOneRequest"
       responses:
         "200":
-          description: Native answers, resolved upstream model, and token usage.
+          description: Native answers, resolved upstream model, and token usage. Request ID headers are exposed to browser clients.
           headers:
             x-request-id:
               $ref: "#/components/headers/XRequestID"
+            x-typesafe-request-id:
+              description: Winning upstream request ID, when reported. Read by the TypeSafe SDK withResponse().requestId; distinct from TokenHub's x-request-id.
+              schema:
+                type: string
             x-ratelimit-limit-requests:
               $ref: "#/components/headers/XRateLimitLimitRequests"
             x-ratelimit-remaining-requests:
