@@ -35,12 +35,13 @@ func (s *Server) executeRoutedSystemOne(r *http.Request, routed RoutedCall, req 
 			var result SystemOneResponse
 			if err == nil {
 				result, err = decodeSystemOneGatewayResponse(response)
+				// Native usage is required even if the hook omits DataUsage. A malformed
+				// answer envelope can still contain independently valid native usage.
+				metered := result.meteredUsage()
+				metered.UpstreamRequestID = usage.UpstreamRequestID
+				metered.ResponseHeaders = usage.ResponseHeaders
+				usage = metered
 				if err == nil {
-					// Native usage is required even if the hook omits DataUsage.
-					metered := result.meteredUsage()
-					metered.UpstreamRequestID = usage.UpstreamRequestID
-					metered.ResponseHeaders = usage.ResponseHeaders
-					usage = metered
 					err = result.validate(upstream)
 				}
 			}
@@ -74,9 +75,5 @@ func decodeSystemOneGatewayResponse(response any) (SystemOneResponse, error) {
 	if err != nil {
 		return SystemOneResponse{}, invalidSystemOneResponse()
 	}
-	var result SystemOneResponse
-	if json.Unmarshal(data, &result) != nil {
-		return result, invalidSystemOneResponse()
-	}
-	return result, nil
+	return decodeSystemOneResponse(data)
 }

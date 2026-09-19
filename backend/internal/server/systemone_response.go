@@ -10,6 +10,24 @@ import (
 	"tokenhub/backend/internal/metering"
 )
 
+func decodeSystemOneResponse(data []byte) (SystemOneResponse, error) {
+	var response SystemOneResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		// A type error can leave partially assigned token pointers. Read usage
+		// independently so valid usage survives malformed answers without inventing tokens.
+		response.Usage = SystemOneUsage{}
+		var envelope struct {
+			Usage json.RawMessage `json:"usage"`
+		}
+		var usage SystemOneUsage
+		if json.Unmarshal(data, &envelope) == nil && json.Unmarshal(envelope.Usage, &usage) == nil {
+			response.Usage = usage
+		}
+		return response, invalidSystemOneResponse()
+	}
+	return response, nil
+}
+
 func (response SystemOneResponse) meteredUsage() Usage {
 	usage := Usage{ServedModel: response.Model, MeteringInvalid: true}
 	if response.Usage.InputTokens == nil || response.Usage.OutputTokens == nil {

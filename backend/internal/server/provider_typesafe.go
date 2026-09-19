@@ -35,13 +35,16 @@ func (a TypeSafeAdapter) SystemOne(ctx context.Context, provider Provider, provi
 	}
 	defer response.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(response.Body, (8<<20)+1))
-	var result SystemOneResponse
-	if err != nil || len(data) > 8<<20 || json.Unmarshal(data, &result) != nil {
-		return result, Usage{MeteringInvalid: true}, invalidSystemOneResponse()
+	if err != nil || len(data) > 8<<20 {
+		return SystemOneResponse{}, Usage{MeteringInvalid: true}, invalidSystemOneResponse()
 	}
+	result, decodeErr := decodeSystemOneResponse(data)
 	usage := result.meteredUsage()
 	usage.UpstreamRequestID = firstNonEmpty(response.Header.Get("x-typesafe-request-id"), response.Header.Get("x-request-id"))
 	usage.ResponseHeaders = response.Header.Clone()
+	if decodeErr != nil {
+		return result, usage, decodeErr
+	}
 	return result, usage, result.validate(req)
 }
 
@@ -75,11 +78,10 @@ func (a TypeSafeAdapter) request(ctx context.Context, provider Provider, method,
 }
 
 func (a TypeSafeAdapter) DiscoverModels(ctx context.Context, req ProviderCreateRequest) (ProviderCatalogEntry, error) {
-	headers, err := normalizeProviderHeaders(req.Headers)
-	if err != nil {
+	provider := Provider{Type: providerTypeSafe, BaseURL: req.BaseURL, APIKey: req.APIKey, Headers: req.Headers, SensitiveHeaders: req.SensitiveHeaders}
+	if err := validateProviderHeaderConfig(&provider); err != nil {
 		return ProviderCatalogEntry{}, err
 	}
-	provider := Provider{Type: providerTypeSafe, BaseURL: req.BaseURL, APIKey: req.APIKey, Headers: headers, SensitiveHeaders: req.SensitiveHeaders}
 	response, err := a.request(ctx, provider, http.MethodGet, "/models", nil)
 	if err != nil {
 		return ProviderCatalogEntry{}, err
@@ -120,6 +122,18 @@ func (a TypeSafeAdapter) DiscoverModels(ctx context.Context, req ProviderCreateR
 }
 
 func (a TypeSafeAdapter) ResourceModels(ctx context.Context, provider Provider, resource ProviderResource, _ string) (ProviderCatalogEntry, int, error) {
+	// Normalize sensitive names before merging, which otherwise drops unmatched flags.
+	if err := validateProviderHeaderConfig(&provider); err != nil {
+		return ProviderCatalogEntry{}, http.StatusBadRequest, err
+	}
+	resourceHeaders := Provider{Type: provider.Type, Headers: resource.Headers, SensitiveHeaders: resource.SensitiveHeaders}
+	if err := validateProviderHeaderConfig(&resourceHeaders); err != nil {
+		return ProviderCatalogEntry{}, http.StatusBadRequest, err
+	}
+	if err := validateMergedProviderHeaderLimits(provider.Headers, resourceHeaders.Headers); err != nil {
+		return ProviderCatalogEntry{}, http.StatusBadRequest, err
+	}
+	resource.Headers, resource.SensitiveHeaders = resourceHeaders.Headers, resourceHeaders.SensitiveHeaders
 	provider = effectiveProviderResourceConfig(provider, &resource)
 	entry, err := a.DiscoverModels(ctx, ProviderCreateRequest{Type: providerTypeSafe, BaseURL: provider.BaseURL, APIKey: provider.APIKey, Headers: provider.Headers, SensitiveHeaders: provider.SensitiveHeaders})
 	return entry, http.StatusOK, err
