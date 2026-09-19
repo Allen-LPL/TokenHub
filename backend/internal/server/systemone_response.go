@@ -99,6 +99,24 @@ func (response SystemOneResponse) validateWithLegendRequest(req, legendRequest S
 		if math.Abs(sum-1) > 0.01+roundingEpsilon {
 			return invalidSystemOneResponse()
 		}
+		if question.Type == "score" {
+			var expectedScore float64
+			for index := 0; index < len(expected); index++ {
+				expectedScore += float64(index) * *answer.Probabilities[strconv.Itoa(index)]
+			}
+			// Gateway policy: allow one percent of the score range for reported rounding.
+			// This is not an upstream precision guarantee; do not renormalize probabilities.
+			if math.Abs(*answer.Score-expectedScore) > (0.01+roundingEpsilon)*float64(len(expected)-1) {
+				return invalidSystemOneResponse()
+			}
+		} else if question.Type == "choice" {
+			chosen := *answer.Probabilities[*answer.Choice]
+			for _, probability := range answer.Probabilities {
+				if *probability-chosen > 0.01+roundingEpsilon {
+					return invalidSystemOneResponse()
+				}
+			}
+		}
 	}
 	return nil
 }

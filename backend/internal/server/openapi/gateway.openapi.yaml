@@ -1465,7 +1465,7 @@ components:
         score:
           type: number
           minimum: 0
-          description: Expected level index, bounded by the number of criteria minus one.
+          description: Expected level index, bounded by the number of criteria minus one. Must match the raw probability-weighted index sum within one percent of the score range (plus floating-point epsilon); this is a gateway tolerance, not an upstream precision guarantee.
         legend:
           type: object
           additionalProperties:

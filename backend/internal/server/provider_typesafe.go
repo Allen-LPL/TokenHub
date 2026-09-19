@@ -75,7 +75,11 @@ func (a TypeSafeAdapter) request(ctx context.Context, provider Provider, method,
 }
 
 func (a TypeSafeAdapter) DiscoverModels(ctx context.Context, req ProviderCreateRequest) (ProviderCatalogEntry, error) {
-	provider := Provider{Type: providerTypeSafe, BaseURL: req.BaseURL, APIKey: req.APIKey, Headers: req.Headers, SensitiveHeaders: req.SensitiveHeaders}
+	headers, err := normalizeProviderHeaders(req.Headers)
+	if err != nil {
+		return ProviderCatalogEntry{}, err
+	}
+	provider := Provider{Type: providerTypeSafe, BaseURL: req.BaseURL, APIKey: req.APIKey, Headers: headers, SensitiveHeaders: req.SensitiveHeaders}
 	response, err := a.request(ctx, provider, http.MethodGet, "/models", nil)
 	if err != nil {
 		return ProviderCatalogEntry{}, err

@@ -166,6 +166,9 @@ func TestSystemOneResponseProbabilityTolerance(t *testing.T) {
 			} {
 				t.Run(tt.name, func(t *testing.T) {
 					payload := strings.Replace(systemOneFixtureResponse, primitive.old, fmt.Sprintf(primitive.format, tt.probability), 1)
+					if primitive.name == "score" {
+						payload = strings.Replace(payload, `"score":0.75`, `"score":0.5`, 1)
+					}
 					var response SystemOneResponse
 					if err := json.Unmarshal([]byte(payload), &response); err != nil {
 						t.Fatal(err)
