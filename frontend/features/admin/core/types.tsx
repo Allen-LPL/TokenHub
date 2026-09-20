@@ -800,7 +800,13 @@ export type ModelRoutePolicyRoute = {
   cost_score: number;
 };
 
+export type SemanticRoutingPolicy = {
+  mode: "off" | "shadow" | "enforce";
+  min_confidence: number;
+};
+
 export type ModelRoutePolicy = {
+  semantic_routing?: SemanticRoutingPolicy;
   strategy: ModelRouteStrategy;
   routes: ModelRoutePolicyRoute[];
 };
