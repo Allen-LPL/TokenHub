@@ -274,5 +274,7 @@ func semanticModelFitsRequest(model ProviderModel, req ChatCompletionRequest, pr
 			return false
 		}
 	}
-	return req.MaxTokens == 0 || slices.Contains(model.SupportedParameters, "max_tokens") || slices.Contains(model.SupportedParameters, "max_completion_tokens") || slices.Contains(model.SupportedParameters, "max_output_tokens")
+	// OpenAI-compatible Chat forwards max_tokens unchanged. Other budget fields do not
+	// establish compatibility without an adapter-specific translation contract.
+	return req.MaxTokens == 0 || slices.Contains(model.SupportedParameters, "max_tokens")
 }
