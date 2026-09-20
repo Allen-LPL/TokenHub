@@ -107,7 +107,7 @@ func TestSemanticRoutingHTTPOutputBudgetCompatibility(t *testing.T) {
 					}
 					calls := 0
 					var offered []string
-					server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, candidates []semanticCandidate) (semanticDecision, error) {
+					server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, candidates []semanticCandidate, instructions string) (semanticDecision, error) {
 						calls++
 						choice := "no_preference"
 						for _, candidate := range candidates {

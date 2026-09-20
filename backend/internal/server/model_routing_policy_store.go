@@ -19,10 +19,18 @@ func (s *GormStore) UpdateModelRoutePolicy(modelName string, policy ModelRoutePo
 	var updated []ModelRoute
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// Match model edits and catalog refreshes: lock the model before routes.
-		if policy.SemanticRouting != nil {
-			var model Model
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&model, "name = ?", modelName).Error; err != nil {
-				return notFound(err, "model_not_found", "Model not found")
+		var model Model
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&model, "name = ?", modelName).Error; err != nil {
+			return notFound(err, "model_not_found", "Model not found")
+		}
+		if policy.Strategy != RouteStrategyJev {
+			saved := modelSemanticRoutingPolicy(model)
+			if policy.SemanticRouting != nil {
+				saved = *policy.SemanticRouting
+			}
+			if len(saved.Candidates) > 0 {
+				saved.Mode = "off"
+				policy.SemanticRouting = &saved
 			}
 		}
 		var routes []ModelRoute
@@ -31,6 +39,18 @@ func (s *GormStore) UpdateModelRoutePolicy(modelName string, policy ModelRoutePo
 		}
 		if len(routes) == 0 {
 			return NewHTTPError(http.StatusNotFound, "model_routes_not_found", "Model has no routing rules")
+		}
+		if err := validateJevStrategyPolicy(policy, routes); err != nil {
+			return err
+		}
+		previous := modelSemanticRoutingPolicy(model)
+		if previous.ResponseBindingRequired || len(previous.Candidates) > 0 || policy.Strategy == RouteStrategyJev {
+			if policy.SemanticRouting == nil {
+				policy.SemanticRouting = &previous
+			}
+			copy := *policy.SemanticRouting
+			copy.ResponseBindingRequired = true
+			policy.SemanticRouting = &copy
 		}
 		if len(policy.Routes) != len(routes) {
 			return NewHTTPError(http.StatusBadRequest, "invalid_model_route_policy", "Routing policy must include every route for the model")

@@ -13,3 +13,11 @@
 @media (max-width: 600px) {
   .semantic-routing-fields .form-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+.semantic-routing-fields .field textarea { width: 100%; min-width: 0; resize: vertical; }
+.jev-candidates { display: grid; gap: 12px; }
+.jev-candidate { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.jev-candidate-toggle { display: flex; align-items: flex-start; gap: 8px; overflow-wrap: anywhere; }
+.jev-candidate-toggle input { flex: 0 0 auto; margin-top: 3px; }
+.semantic-routing-fields .jev-candidate-toggle { display: flex; }
+.semantic-routing-fields .jev-candidate-toggle input { width: auto; }

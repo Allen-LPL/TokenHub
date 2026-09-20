@@ -19,7 +19,7 @@ func TestJevRoutingClientLive(t *testing.T) {
 	decision, err := client.Evaluate(context.Background(), "Translate the greeting Good morning into French.", []semanticCandidate{
 		{ID: "candidate_1", Model: "synthetic-translator", Description: "Synthetic test candidate supporting short text translations.", Capabilities: []string{"translation"}},
 		{ID: "candidate_2", Model: "synthetic-coder", Description: "Synthetic test candidate supporting code completion.", Capabilities: []string{"coding"}},
-	})
+	}, "Choose the model matching the task.")
 	if err != nil {
 		t.Fatalf("TypeSafe contract smoke failed: %v", err)
 	}

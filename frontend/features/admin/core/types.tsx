@@ -1,3 +1,5 @@
+import type { SemanticRoutingPolicy } from "./semantic-routing-types";
+export type { SemanticRoutingPolicy, SemanticRoutingCandidate } from "./semantic-routing-types";
 import { Activity } from "lucide-react";
 import type { ResourceAction } from "./resource-action";
 
@@ -791,18 +793,13 @@ export type ModelRoute = {
   last_used_at?: string;
 };
 
-export type ModelRouteStrategy = "priority_weighted" | "adaptive" | "quality" | "cost" | "priority_only" | "balanced";
+export type ModelRouteStrategy = "jev" | "priority_weighted" | "adaptive" | "quality" | "cost" | "priority_only" | "balanced";
 
 export type ModelRoutePolicyRoute = {
   route_id: string;
   weight: number;
   quality_score: number;
   cost_score: number;
-};
-
-export type SemanticRoutingPolicy = {
-  mode: "off" | "shadow" | "enforce";
-  min_confidence: number;
 };
 
 export type ModelRoutePolicy = {
