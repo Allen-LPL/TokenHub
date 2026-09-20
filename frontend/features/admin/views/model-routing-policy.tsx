@@ -7,6 +7,8 @@ import { providerTypeLabelFromData } from "../domain/labels";
 import { tx } from "../i18n/runtime";
 import { StatusPill } from "../shared/ui";
 
+import { readSemanticRoutingPolicy, SemanticRoutingFields } from "./semantic-routing-policy";
+
 const strategyOptions: Array<{
   value: ModelRouteStrategy;
   label: string;
@@ -132,6 +134,8 @@ export function ModelRoutingPolicyEditor({
   const persistedStrategies = useMemo(() => new Set(routes.map((route) => normalizeStrategy(route.strategy))), [routes]);
   const persistedStrategy = persistedStrategies.values().next().value ?? "priority_weighted";
   const [strategy, setStrategy] = useState<ModelRouteStrategy>(persistedStrategy);
+  const persistedSemantic = readSemanticRoutingPolicy(model);
+  const [semantic, setSemantic] = useState(persistedSemantic);
   const [guideOpen, setGuideOpen] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RouteDraft>>(() => Object.fromEntries(
     modelRoutePolicyPayload(persistedStrategy, routes).routes.map(({ route_id, ...draft }) => [route_id, draft]),
@@ -139,11 +143,11 @@ export function ModelRoutingPolicyEditor({
   const selectedOption = strategyOptions.find((option) => option.value === strategy) ?? strategyOptions[0];
   const guideToggleLabel = tx(guideOpen ? "收起当前策略说明" : "查看当前策略说明");
   const mixedStrategies = persistedStrategies.size > 1;
-  const dirty = mixedStrategies || strategy !== persistedStrategy || routes.some((route) => {
+  const dirty = semantic.mode !== persistedSemantic.mode || semantic.min_confidence !== persistedSemantic.min_confidence || mixedStrategies || strategy !== persistedStrategy || routes.some((route) => {
     const draft = drafts[route.id];
     return !draft || draft.weight !== positiveOr(route.weight, 100) || draft.quality_score !== positiveOr(route.quality_score, 50) || draft.cost_score !== positiveOr(route.cost_score, 50);
   });
-  const invalid = routes.some((route) => {
+  const invalid = !Number.isFinite(semantic.min_confidence) || semantic.min_confidence < 0 || semantic.min_confidence > 1 || routes.some((route) => {
     const draft = drafts[route.id];
     return !draft || !Number.isFinite(draft.weight) || !Number.isFinite(draft.quality_score) || !Number.isFinite(draft.cost_score) || draft.weight < 1 || draft.quality_score < 1 || draft.quality_score > 100 || draft.cost_score < 1 || draft.cost_score > 100;
   });
@@ -156,6 +160,7 @@ export function ModelRoutingPolicyEditor({
 
   function savePolicy() {
     onSave(model, {
+      semantic_routing: semantic,
       strategy,
       routes: routes.map((route) => ({ route_id: route.id, ...drafts[route.id] })),
     });
@@ -254,6 +259,8 @@ export function ModelRoutingPolicyEditor({
       {strategy === "priority_weighted" || strategy === "adaptive" ? (
         <div className="route-policy-share-note">{tx("项目作用域过滤后将按可用 Provider 重新计算占比。")}</div>
       ) : null}
+
+      <SemanticRoutingFields value={semantic} disabled={loading} onChange={setSemantic} />
 
       <div className="route-policy-list">
         {routes.map((route, index) => {
