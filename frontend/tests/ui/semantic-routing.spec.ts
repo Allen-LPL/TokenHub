@@ -13,14 +13,16 @@ for (const state of ["save", "failure", "mobile"] as const) {
     const overview = shellResponses().get("GET /api/admin/overview") as Record<string, unknown>;
     api.replaceResponse("GET", "/api/admin/overview", { ...overview, providers });
     const saved: ModelRoutePolicy[] = [];
+    let candidateOrder = [0, 1];
+    let confidence = 0.8;
     api.define("PATCH", `/api/admin/model-routing-policies/${model.name}`, input => {
       const policy = input.body as ModelRoutePolicy;
       expect(policy.routes).toEqual(routes.map(route => ({ route_id: route.id, weight: 100, quality_score: 50, cost_score: 50 })));
       if (policy.strategy === "jev") {
-        expect(policy.semantic_routing?.min_confidence).toBe(0.8);
+        expect(policy.semantic_routing?.min_confidence).toBe(confidence);
         expect(policy.semantic_routing?.mode).toBe("enforce");
         expect(policy.semantic_routing?.default_candidate_id).toBe("route_ui_1");
-        expect(policy.semantic_routing?.candidates).toEqual(routes.map((route, index) => ({ id: route.id, provider_id: route.provider_id, provider_model: route.provider_model, criteria: index === 0 ? "Simple extraction and translation" : "Complex analysis and code changes" })));
+        expect(policy.semantic_routing?.candidates).toEqual(candidateOrder.map(index => ({ id: routes[index].id, provider_id: routes[index].provider_id, provider_model: routes[index].provider_model, criteria: index === 0 ? "Simple extraction and translation" : "Complex analysis and code changes" })));
       } else expect(policy.semantic_routing?.mode).toBe("off");
       saved.push(policy);
       if (state === "failure") return { status: 500, json: { error: { message: "Synthetic save failure" } } };
@@ -63,12 +65,23 @@ for (const state of ["save", "failure", "mobile"] as const) {
       await capture(page, testInfo, panel, `semantic-routing-${state}`, "Jev 智能路由设置");
     }
     if (state === "save") {
+      await panel.getByRole("checkbox", { name: "upstream-0 · UI Provider 0", exact: true }).uncheck();
+      await panel.getByRole("checkbox", { name: "upstream-0 · UI Provider 0", exact: true }).check();
+      await panel.getByLabel("upstream-0 · UI Provider 0 的适用条件").fill("Simple extraction and translation");
+      candidateOrder = [1, 0];
+      await page.getByRole("button", { name: "应用策略" }).click();
+      await expect(page.getByRole("button", { name: "应用策略" })).toBeDisabled();
+      await page.reload();
+      confidence = 0.75;
+      await panel.getByLabel("最低置信度").fill("0.75");
+      await page.getByRole("button", { name: "应用策略" }).click();
+      await expect(page.getByRole("button", { name: "应用策略" })).toBeDisabled();
       await page.getByRole("tab", { name: "固定比例" }).click();
       await page.getByRole("button", { name: "应用策略" }).click();
       await expect(page.getByRole("button", { name: "应用策略" })).toBeDisabled();
       await page.reload();
       await expect(page.getByLabel("模型选择指令")).toHaveCount(0);
-      expect(saved.map(policy => policy.strategy)).toEqual(["jev", "priority_weighted"]);
+      expect(saved.map(policy => policy.strategy)).toEqual(["jev", "jev", "jev", "priority_weighted"]);
     }
   });
 }

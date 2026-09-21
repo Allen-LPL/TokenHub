@@ -591,7 +591,9 @@ func (s *Server) processResponseJob(job ResponseJob, owner string, leaseTTL time
 	}
 	response, route, usage, attempts, invokeErr := s.executeRoutedResponsesContext(ctx, envelope.Headers, routed, request)
 	if invokeErr == nil {
-		invokeErr = s.bindJevResponse(ctx, routed.Call, route, response, job.ID)
+		// Persist this binding only with a successful, ownership-fenced completion.
+		// Capture the upstream ID before output hooks can rewrite the response.
+		routed.Call.jevResponseBinding, invokeErr = s.pendingJevResponseBinding(routed.Call, route, response, job.ID)
 	}
 	if invokeErr == nil {
 		response, invokeErr = s.runGatewayResponsePostHooks(ctx, routed.Call, route, response, providerRouteProtocolResponses)

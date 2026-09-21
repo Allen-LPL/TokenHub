@@ -48,59 +48,85 @@ func (s *GormStore) LoadJevResponseBinding(ctx context.Context, key string) (jev
 
 func (s *GormStore) SaveJevResponseBinding(ctx context.Context, binding jevResponseBinding, protectedIDs []string) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Bound each cleanup batch; expiration never requires an unbounded scan.
-		if err := tx.Exec("DELETE FROM jev_response_bindings WHERE key_hash IN (SELECT key_hash FROM jev_response_bindings WHERE expires_at <= ? LIMIT 100)", time.Now().Unix()).Error; err != nil {
-			return err
-		}
-		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&binding).Error; err != nil {
-			return err
-		}
-		var current jevResponseBinding
-		if err := tx.First(&current, "key_hash = ?", binding.KeyHash).Error; err != nil {
-			return err
-		}
-		if current.RouteID != binding.RouteID || current.ProviderID != binding.ProviderID || current.ProviderModel != binding.ProviderModel || current.ResourceID != binding.ResourceID || current.UpstreamID != binding.UpstreamID {
-			return errors.New("response binding conflict")
-		}
-		// Keep only a keyed hash after the detailed binding expires. Otherwise a
-		// foreign key could replay an old opaque ID through an ordinary alias.
-		for _, key := range protectedIDs {
-			guard := jevResponseBinding{KeyHash: key, ExpiresAt: int64(1<<63 - 1)}
-			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&guard).Error; err != nil {
-				return err
-			}
-		}
-		return nil
+		return saveJevResponseBinding(tx, binding, protectedIDs)
 	})
+}
+
+func saveJevResponseBinding(tx *gorm.DB, binding jevResponseBinding, protectedIDs []string) error {
+	// Bound each cleanup batch; expiration never requires an unbounded scan.
+	if err := tx.Exec("DELETE FROM jev_response_bindings WHERE key_hash IN (SELECT key_hash FROM jev_response_bindings WHERE expires_at <= ? LIMIT 100)", time.Now().Unix()).Error; err != nil {
+		return err
+	}
+	if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&binding).Error; err != nil {
+		return err
+	}
+	var current jevResponseBinding
+	if err := tx.First(&current, "key_hash = ?", binding.KeyHash).Error; err != nil {
+		return err
+	}
+	if current.RouteID != binding.RouteID || current.ProviderID != binding.ProviderID || current.ProviderModel != binding.ProviderModel || current.ResourceID != binding.ResourceID || current.UpstreamID != binding.UpstreamID {
+		return errors.New("response binding conflict")
+	}
+	// Keep only a keyed hash after the detailed binding expires. Otherwise a
+	// foreign key could replay an old opaque ID through an ordinary alias.
+	for _, key := range protectedIDs {
+		guard := jevResponseBinding{KeyHash: key, ExpiresAt: int64(1<<63 - 1)}
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&guard).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type pendingJevResponseBinding struct {
+	binding      jevResponseBinding
+	protectedIDs []string
 }
 
 func (s *Server) jevResponseKey(call CallContext, id string) string {
 	return deriveSessionAffinityKey(s.config.SecretKey, call.Key.ID, "jev-response\x00"+call.Model.Name+"\x00"+id)
 }
 
-func (s *Server) bindJevResponse(ctx context.Context, call CallContext, route RouteSelection, response any, alias string) error {
+func (s *Server) pendingJevResponseBinding(call CallContext, route RouteSelection, response any, alias string) (*pendingJevResponseBinding, error) {
 	if routeStrategy(route.Route) != RouteStrategyJev && !call.JevResponseBound {
-		return nil
+		return nil, nil
 	}
 	data, err := json.Marshal(response)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var envelope struct {
 		ID string `json:"id"`
 	}
-	if json.Unmarshal(data, &envelope) != nil || envelope.ID == "" {
-		return nil
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return nil, nil
+	}
+	upstreamID := envelope.ID
+	if upstreamID == "" {
+		return nil, nil
 	}
 	if alias == "" {
-		alias = envelope.ID
+		alias = upstreamID
+	}
+	return &pendingJevResponseBinding{
+		binding:      jevResponseBinding{KeyHash: s.jevResponseKey(call, alias), RouteID: route.Route.ID, ProviderID: route.Provider.ID, ProviderModel: route.ProviderModel, ResourceID: routeResourceID(route), UpstreamID: upstreamID, ExpiresAt: time.Now().Add(30 * 24 * time.Hour).Unix()},
+		protectedIDs: []string{s.jevProtectedResponseKey(alias), s.jevProtectedResponseKey(upstreamID)},
+	}, nil
+}
+
+func (s *Server) bindJevResponse(ctx context.Context, call CallContext, route RouteSelection, response any, alias string) error {
+	pending, err := s.pendingJevResponseBinding(call, route, response, alias)
+	if err != nil {
+		return err
+	}
+	if pending == nil {
+		return nil
 	}
 	store, ok := s.store.(jevResponseBindingStore)
 	if !ok {
 		return NewHTTPError(503, "jev_binding_unavailable", "Response route binding is unavailable")
 	}
-	err = store.SaveJevResponseBinding(ctx, jevResponseBinding{KeyHash: s.jevResponseKey(call, alias), RouteID: route.Route.ID, ProviderID: route.Provider.ID, ProviderModel: route.ProviderModel, ResourceID: routeResourceID(route), UpstreamID: envelope.ID, ExpiresAt: time.Now().Add(30 * 24 * time.Hour).Unix()}, []string{s.jevProtectedResponseKey(alias), s.jevProtectedResponseKey(envelope.ID)})
-	if err != nil {
+	if err := store.SaveJevResponseBinding(ctx, pending.binding, pending.protectedIDs); err != nil {
 		return NewHTTPError(503, "jev_binding_unavailable", "Response route binding could not be saved")
 	}
 	return nil
@@ -141,6 +167,9 @@ func (s *Server) applyJevResponsesRouting(ctx context.Context, routed *RoutedCal
 		if permitted {
 			for _, route := range routed.Routes {
 				if route.Route.ID == binding.RouteID && route.Provider.ID == binding.ProviderID && route.ProviderModel == binding.ProviderModel && routeResourceID(route) == binding.ResourceID {
+					if err := s.validateJevBoundModel(ctx, route, *req); err != nil {
+						return err
+					}
 					routed.Routes = []RouteSelection{route}
 					routed.Call.JevResponseBound = true
 					setRawJSONField(req.raw, "previous_response_id", binding.UpstreamID, true)
@@ -160,15 +189,42 @@ func (s *Server) applyJevResponsesRouting(ctx context.Context, routed *RoutedCal
 		eligible = false
 	}
 	return s.applyJevRouting(ctx, routed, text, eligible && scope == sessionScopeNone, func(model ProviderModel) bool {
-		data, _ := json.Marshal(req)
-		parameters := map[string]bool{"max_output_tokens": req.MaxTokens != 0, "temperature": req.Temperature != nil, "reasoning": req.Reasoning != nil}
-		for _, key := range []string{"tools", "tool_choice", "parallel_tool_calls", "text", "top_p", "truncation"} {
-			raw, ok := req.raw[key]
-			parameters[key] = ok && string(raw) != "null"
-		}
-		parameters = jevRequestParameters(req.raw, parameters, []string{"model", "input", "instructions", "stream", "background", "store", "user", "metadata", "prompt_cache_key", "previous_response_id", "client_metadata"})
-		return jevModelFits(model, len(data), req.MaxTokens, parameters) && jevInputModalitiesFit(model, req.Input)
+		return jevResponsesModelFits(model, *req)
 	})
+}
+
+func (s *Server) validateJevBoundModel(ctx context.Context, route RouteSelection, req ResponsesRequest) error {
+	reader, ok := s.store.(semanticModelReader)
+	if !ok {
+		return NewHTTPError(503, "jev_candidates_unavailable", "Jev candidate metadata is unavailable")
+	}
+	timeout := s.config.SemanticRoutingTimeoutMS
+	if timeout <= 0 {
+		timeout = 1000
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Millisecond)
+	defer cancel()
+	models, err := reader.SemanticProviderModels(ctx, []RouteSelection{route})
+	if err != nil {
+		return NewHTTPError(503, "jev_candidates_unavailable", "Jev candidate metadata is unavailable")
+	}
+	for _, model := range models {
+		if model.ProviderID == route.Provider.ID && model.UpstreamModel == route.ProviderModel && jevResponsesModelFits(model, req) {
+			return nil
+		}
+	}
+	return NewHTTPError(409, "jev_previous_route_unavailable", "Previous response model is no longer available or compatible")
+}
+
+func jevResponsesModelFits(model ProviderModel, req ResponsesRequest) bool {
+	data, _ := json.Marshal(req)
+	parameters := map[string]bool{"max_output_tokens": req.MaxTokens != 0, "temperature": req.Temperature != nil, "reasoning": req.Reasoning != nil}
+	for _, key := range []string{"tools", "tool_choice", "parallel_tool_calls", "text", "top_p", "truncation"} {
+		raw, ok := req.raw[key]
+		parameters[key] = ok && string(raw) != "null"
+	}
+	parameters = jevRequestParameters(req.raw, parameters, []string{"model", "input", "instructions", "stream", "background", "store", "user", "metadata", "prompt_cache_key", "previous_response_id", "client_metadata"})
+	return jevModelFits(model, len(data), req.MaxTokens, parameters) && jevInputModalitiesFit(model, req.Input)
 }
 
 func jevResponsesText(req ResponsesRequest) (string, bool) {

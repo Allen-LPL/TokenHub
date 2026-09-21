@@ -1283,6 +1283,7 @@ type RoutedCall struct {
 
 type CallContext struct {
 	JevResponseBound        bool
+	jevResponseBinding      *pendingJevResponseBinding
 	RoutingStrategyOverride string
 	RouteProtocol           string
 	RequestID               string

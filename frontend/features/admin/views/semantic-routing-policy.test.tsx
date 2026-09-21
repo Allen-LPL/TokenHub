@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { emptyData } from "../domain/catalog";
 import type { Model, ModelRoute, SemanticRoutingPolicy } from "../core/types";
 import { ModelRoutingPolicyEditor } from "./model-routing-policy";
-import { readSemanticRoutingPolicy, defaultJevInstructions } from "./semantic-routing-policy";
+import { readSemanticRoutingPolicy, defaultJevInstructions, initialJevPolicy } from "./semantic-routing-policy";
 
 const model: Model = { id: "m", name: "test-model", family: "test", modality: "chat", status: "active" };
 const routes: ModelRoute[] = [0, 1].map(index => ({ id: `r${index}`, model_name: "test-model", provider_id: `p${index}`, provider_model: `upstream-${index}`, priority: 1, weight: 100, quality_score: 50, cost_score: 50, status: "active", strategy: "quality" }));
@@ -48,6 +48,21 @@ describe("Jev model routing strategy", () => {
     fireEvent.click(within(panel).getByRole("checkbox", { name: "upstream-0 · p0" }));
     expect(screen.getByLabelText("默认模型")).toHaveValue("r1");
     expect(within(screen.getByLabelText("默认模型")).queryByRole("option", { name: "upstream-0 · p0" })).not.toBeInTheDocument();
+  });
+  it("preserves configured fallback order when only confidence is edited", () => {
+    const third = { ...routes[0], id: "r2", provider_id: "p2", provider_model: "upstream-2" };
+    const ordered = [policy.candidates![0], { id: "r2", provider_id: "p2", provider_model: "upstream-2", criteria: "Third model tasks" }, policy.candidates![1]];
+    const saved = { ...policy, default_candidate_id: "r0", candidates: ordered };
+    const save = renderEditor({ ...model, metadata: { tokenhub_semantic_routing: JSON.stringify(saved) } }, [...routes, third].map(route => ({ ...route, strategy: "jev" })));
+    fireEvent.change(screen.getByLabelText("最低置信度"), { target: { value: "0.8" } });
+    fireEvent.click(screen.getByRole("button", { name: "应用策略" }));
+    expect(save.mock.calls[0][1].semantic_routing.candidates).toEqual(ordered);
+  });
+  it("removes missing routes without reordering the remaining saved candidates", () => {
+    const saved = { ...policy, candidates: [...policy.candidates!].reverse() };
+    const current = { ...model, metadata: { tokenhub_semantic_routing: JSON.stringify(saved) } };
+    expect(initialJevPolicy(current, routes, emptyData()).candidates).toEqual(saved.candidates);
+    expect(initialJevPolicy(current, [routes[1]], emptyData()).candidates).toEqual([saved.candidates[0]]);
   });
   it("switches to another strategy and disables Jev even after an invalid edit", () => {
     const save = renderEditor({ ...model, metadata: { tokenhub_semantic_routing: JSON.stringify(policy) } }, routes.map(route => ({ ...route, strategy: "jev" })));
