@@ -1,0 +1,15 @@
+.semantic-routing-fields {
+  min-width: 0;
+  margin: 14px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.semantic-routing-fields legend { padding: 0 6px; font-weight: 600; }
+.semantic-routing-fields .form-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(100px, 1fr); gap: 12px; }
+.semantic-routing-fields label { display: grid; gap: 6px; min-width: 0; }
+.semantic-routing-fields input, .semantic-routing-fields select { width: 100%; min-width: 0; }
+.semantic-routing-fields p { margin: 10px 0 0; color: var(--muted-strong); font-size: 12px; line-height: 1.7; }
+@media (max-width: 600px) {
+  .semantic-routing-fields .form-grid { grid-template-columns: minmax(0, 1fr); }
+}

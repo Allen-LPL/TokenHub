@@ -428,8 +428,9 @@ type ModelRoutePolicyRoute struct {
 }
 
 type ModelRoutePolicy struct {
-	Strategy string                  `json:"strategy"`
-	Routes   []ModelRoutePolicyRoute `json:"routes"`
+	SemanticRouting *SemanticRoutingPolicy  `json:"semantic_routing,omitempty"`
+	Strategy        string                  `json:"strategy"`
+	Routes          []ModelRoutePolicyRoute `json:"routes"`
 }
 
 type Usage struct {

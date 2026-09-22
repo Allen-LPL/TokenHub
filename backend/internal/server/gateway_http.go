@@ -143,6 +143,8 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		routed.Routes = s.planRouteOrderWithContext(r.Context(), routed.Call, routed.Routes)
 	}
 
+	s.applySemanticRouting(r.Context(), &routed, req, r.Header)
+
 	if req.Stream {
 		tracker := &streamWriteTracker{writer: w}
 		allowEffortFallback := normalizedReasoningEffort(req.ReasoningEffort) != nil
