@@ -11,12 +11,14 @@ Jev 与固定比例、自适应、质量优先、成本优先、主备顺序和�
 
 例如，一个候选处理提取与翻译，另一个处理复杂代码修改。适用条件应来自实际工作负载的评估，模型名称本身不能证明质量。同一 Provider 和模型的多个资源账号合并为一个候选。其他策略使用相同的对外模型与线路配置入口。
 
+修改线路的 Provider 或上游模型后，Jev 编辑器会刷新对应候选，并保留已保存的候选顺序。应用策略前需检查新模型的适用条件；目录未提供时需补充。
+
 ```json
-{"model":"auto-chat","messages":[{"role":"user","content":"Explain this code change."}]}
+{"model":"auto-chat","messages":[{"role":"user","content":"Explain this code change."}],"max_tokens":128}
 ```
 
 ```json
-{"model":"auto-chat","input":"Explain this code change.","stream":true}
+{"model":"auto-chat","input":"Explain this code change.","max_output_tokens":128,"stream":true}
 ```
 
 ## 服务端配置
@@ -41,7 +43,7 @@ Jev 可以跨线路优先级选择候选模型；现有规划器继续决定同�
 
 评估超时、服务不可用、并发槽满、结果无效、`no_preference` 或置信度不足时使用默认模型。关闭服务端开关或项目不在白名单时，也使用默认模型且不发送文本。默认模型不满足条件时，使用配置顺序中的首个可用候选。没有候选能够处理请求，或模型目录查询失败时返回 503，不选择未配置的模型。只有一个可用候选时无需评估。
 
-候选的模型目录记录必须处于启用状态。已声明的模态、协议参数和上下文限制用于约束候选；其他协议的参数名称不视为等价。上下文检查使用保守的序列化字节估计加输出 Token 预算。缺少声明不能证明能力或适用性，Provider 模型元数据需要准确维护。仅包含能力摘要的目录记录，如果声明了 Chat Completions 或 Responses 端点，规范化时会补充对应端点的基础预算字段；显式预算声明优先生效，不在协议之间转换参数。内置 GPT-6 Astra 记录显式声明 `max_completion_tokens` 和 `max_output_tokens`。已保存的 Provider 模型需要重新导入以刷新声明。
+候选的模型目录记录必须处于启用状态。已声明的模态、协议参数和上下文限制用于约束候选；其他协议的参数名称不视为等价。上下文检查使用保守的序列化字节估计加输出 Token 预算。缺少声明不能证明能力或适用性，Provider 模型元数据需要准确维护。目录规范化按端点分别补充预算字段：声明 Chat Completions 时补充 `max_tokens`，声明 Responses 时补充 `max_output_tokens`，不因已声明其他预算字段而跳过。显式声明会保留，请求参数名称按原样转发。内置 GPT-6 Astra 记录显式声明 `max_tokens`、`max_completion_tokens` 和 `max_output_tokens`。已保存的 Provider 模型需要重新导入以刷新声明。
 
 已有缓存或会话亲和性以及粘性线路顺序优先生效。作用域策略显式覆盖算法时，跳过 Jev 评估，仅在已配置候选中按覆盖算法排序。带会话标识的请求不触发新的 Jev 判断。路由模拟器不调用 Jev，也不能预测分类结果。Anthropic Messages、向量和图片接口保留既有路由行为。
 

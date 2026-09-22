@@ -30,16 +30,15 @@ func TestJevImportedCatalogBudgetRequests(t *testing.T) {
 		t.Fatal("bundled Astra catalog model missing")
 	}
 	for _, enabled := range []bool{false, true} {
-		for _, responses := range []bool{false, true} {
-			t.Run(fmt.Sprintf("enabled_%v_responses_%v", enabled, responses), func(t *testing.T) {
+		for _, budget := range []string{"max_tokens", "max_completion_tokens", "max_output_tokens"} {
+			t.Run(fmt.Sprintf("enabled_%v_%s", enabled, budget), func(t *testing.T) {
 				server, _, _, policy := jevFixture(t)
 				server.config.SemanticRoutingEnabled = enabled
 				var hits, evaluations atomic.Int32
-				budget := "max_completion_tokens"
+				responses := budget == "max_output_tokens"
 				path := "/v1/chat/completions"
 				body := map[string]any{"model": "auto-chat", "messages": []any{map[string]any{"role": "user", "content": "task"}}}
 				if responses {
-					budget = "max_output_tokens"
 					path = "/v1/responses"
 					body = map[string]any{"model": "auto-chat", "input": "task"}
 				}
@@ -50,8 +49,13 @@ func TestJevImportedCatalogBudgetRequests(t *testing.T) {
 						t.Error(err)
 						return
 					}
-					if got[budget] != float64(128) || got["max_tokens"] != nil || got["model"] != astra.ID {
+					if got[budget] != float64(128) || got["model"] != astra.ID {
 						t.Errorf("wire request changed: %+v", got)
+					}
+					for _, other := range []string{"max_tokens", "max_completion_tokens", "max_output_tokens"} {
+						if other != budget && got[other] != nil {
+							t.Errorf("unexpected budget translation to %s: %+v", other, got)
+						}
 					}
 					hits.Add(1)
 					if responses {
@@ -113,8 +117,12 @@ func TestCatalogBudgetDeclarationsKeepWireNames(t *testing.T) {
 		{"both", "responses,chat/completions", nil, []string{"max_tokens", "max_output_tokens"}},
 		{"unknown", "", nil, nil},
 		{"other protocol", "anthropic", nil, nil},
-		{"explicit completion budget", "chat/completions", []string{"max_completion_tokens"}, []string{"max_completion_tokens"}},
-		{"no inferred cross protocol budget", "chat/completions,responses", []string{"max_output_tokens"}, []string{"max_output_tokens"}},
+		{"explicit completion budget", "chat/completions", []string{"max_completion_tokens"}, []string{"max_tokens", "max_completion_tokens"}},
+		{"both with declared output budget", "chat/completions,responses", []string{"max_output_tokens"}, []string{"max_tokens", "max_output_tokens"}},
+		{"responses with declared completion budget", "responses", []string{"max_completion_tokens"}, []string{"max_completion_tokens", "max_output_tokens"}},
+		{"chat with declared output budget", "chat/completions", []string{"max_output_tokens"}, []string{"max_tokens", "max_output_tokens"}},
+		{"unknown with declared completion budget", "", []string{"max_completion_tokens"}, []string{"max_completion_tokens"}},
+		{"prefixed endpoints", " /v1/chat/completions, /v1/responses ", nil, []string{"max_tokens", "max_output_tokens"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			raw := map[string]any{"id": "synthetic", "endpoints": tc.endpoints, "tool_call": true}

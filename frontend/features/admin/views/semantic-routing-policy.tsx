@@ -35,7 +35,7 @@ export function jevModelOptions(routes: ModelRoute[], data: AppData, saved: Sema
 export function initialJevPolicy(model: Model, routes: ModelRoute[], data: AppData): SemanticRoutingPolicy {
   const saved = readSemanticRoutingPolicy(model);
   const options = jevModelOptions(routes, data, saved);
-  const candidates = saved.candidates ? saved.candidates.filter(candidate => options.some(option => option.id === candidate.id)) : options;
+  const candidates = saved.candidates ? saved.candidates.flatMap(candidate => options.filter(option => option.id === candidate.id)) : options;
   return { ...saved, instructions: saved.instructions ?? defaultJevInstructions, candidates, default_candidate_id: saved.default_candidate_id ?? candidates[0]?.id ?? "" };
 }
 

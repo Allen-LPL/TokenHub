@@ -102,7 +102,7 @@ const strategyOptions: Array<{
 type RouteDraft = Omit<ModelRoutePolicyRoute, "route_id">;
 
 export function modelRoutePolicySignature(routes: ModelRoute[]) {
-  return routes.map((route) => [route.id, route.strategy, route.priority, route.weight, route.quality_score, route.cost_score, route.status].join(":")).join("|");
+  return JSON.stringify(routes.map((route) => [route.id, route.provider_id, route.provider_model, route.strategy, route.priority, route.weight, route.quality_score, route.cost_score, route.status]));
 }
 
 export function modelRoutePolicyPayload(strategy: ModelRouteStrategy, routes: ModelRoute[]): ModelRoutePolicy {
@@ -148,6 +148,7 @@ export function ModelRoutingPolicyEditor({
   const savedSemantic = readSemanticRoutingPolicy(model);
   const legacySemantic = savedSemantic.mode !== "off" && !savedSemantic.candidates?.length;
   const persistedSemantic = initialJevPolicy(model, routes, data);
+  const semanticNeedsReconciliation = !!savedSemantic.candidates && JSON.stringify(savedSemantic) !== JSON.stringify(persistedSemantic);
   const [semantic, setSemantic] = useState(persistedSemantic);
   const [guideOpen, setGuideOpen] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, RouteDraft>>(() => Object.fromEntries(
@@ -156,7 +157,7 @@ export function ModelRoutingPolicyEditor({
   const selectedOption = strategyOptions.find((option) => option.value === strategy) ?? strategyOptions[0];
   const guideToggleLabel = tx(guideOpen ? "收起当前策略说明" : "查看当前策略说明");
   const mixedStrategies = persistedStrategies.size > 1;
-  const dirty = legacySemantic || JSON.stringify(semantic) !== JSON.stringify(persistedSemantic) || mixedStrategies || strategy !== persistedStrategy || routes.some((route) => {
+  const dirty = legacySemantic || semanticNeedsReconciliation || JSON.stringify(semantic) !== JSON.stringify(persistedSemantic) || mixedStrategies || strategy !== persistedStrategy || routes.some((route) => {
     const draft = drafts[route.id];
     return !draft || draft.weight !== positiveOr(route.weight, 100) || draft.quality_score !== positiveOr(route.quality_score, 50) || draft.cost_score !== positiveOr(route.cost_score, 50);
   });

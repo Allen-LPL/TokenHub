@@ -11,12 +11,14 @@ Jev is a routing strategy alongside fixed weights, adaptive, quality, cost, prim
 
 For example, one candidate can handle extraction and translation, while another handles complex code changes. Describe suitability using workload evidence; a model name alone does not establish quality. Multiple resource accounts for the same Provider/model appear as one candidate. Other routing strategies use the same public-model and route configuration flow.
 
+After changing a route's Provider or upstream model, the Jev editor refreshes the candidate while retaining the saved candidate order. Review the replacement model's task criteria before applying the policy; enter criteria if its catalog does not supply them.
+
 ```json
-{"model":"auto-chat","messages":[{"role":"user","content":"Explain this code change."}]}
+{"model":"auto-chat","messages":[{"role":"user","content":"Explain this code change."}],"max_tokens":128}
 ```
 
 ```json
-{"model":"auto-chat","input":"Explain this code change.","stream":true}
+{"model":"auto-chat","input":"Explain this code change.","max_output_tokens":128,"stream":true}
 ```
 
 ## Server configuration
@@ -41,7 +43,7 @@ Jev selects across candidate models regardless of their route priority tiers. Th
 
 Timeouts, unavailable evaluators, saturated concurrency, invalid decisions, `no_preference`, and low confidence use the default model. Disabling the server gate or excluding the project also uses that default without sending text. If the default is not eligible, the first eligible configured candidate becomes the fallback. If no configured candidate can serve the request, or catalog lookup fails, TokenHub returns 503 instead of choosing an unconfigured model. A single eligible candidate needs no evaluation.
 
-Candidate catalog entries must be active. Declared modalities, supported wire parameters and context limits constrain eligibility; a parameter from another protocol is not treated as equivalent. Context checking uses a conservative serialized-byte estimate plus the output-token budget. Missing declarations do not establish capability or suitability. Keep Provider model metadata accurate. Capability-only catalog entries with advertised Chat Completions or Responses endpoints receive those endpoints' baseline budget fields during normalization; explicit budget declarations remain authoritative and are never translated across protocols. The shipped GPT-6 Astra entries explicitly declare `max_completion_tokens` and `max_output_tokens`. Reimport previously saved Provider models to refresh their declarations.
+Candidate catalog entries must be active. Declared modalities, supported wire parameters and context limits constrain eligibility; a parameter from another protocol is not treated as equivalent. Context checking uses a conservative serialized-byte estimate plus the output-token budget. Missing declarations do not establish capability or suitability. Keep Provider model metadata accurate. Catalog normalization independently adds `max_tokens` for an advertised Chat Completions endpoint and `max_output_tokens` for an advertised Responses endpoint, even when another budget field is already declared. Explicit declarations are retained; request parameter names are forwarded unchanged. The shipped GPT-6 Astra entries explicitly declare `max_tokens`, `max_completion_tokens`, and `max_output_tokens`. Reimport previously saved Provider models to refresh their declarations.
 
 Existing cache/session affinity and sticky-route ordering take precedence. An explicit scoped strategy override skips Jev and ranks only within the configured candidate set. Requests with session identifiers do not trigger a new Jev decision. The route simulator does not invoke Jev and cannot predict its classification. Anthropic Messages, embeddings and image APIs retain their existing routing behavior.
 
