@@ -40,6 +40,15 @@
       "checksum": "tokenhub-schema-audit-event-correlation-v1",
       "lock_timeout_seconds": 30,
       "statement_budget": 10
+    },
+    {
+      "version": 6,
+      "name": "add-jev-response-bindings",
+      "phase": "expand",
+      "dialect": "",
+      "checksum": "d4fffe9ce0a02dcf7bf27d5d44541f121f8ffd76384b8e1168365d8c26199a80",
+      "lock_timeout_seconds": 30,
+      "statement_budget": 10
     }
   ]
 }

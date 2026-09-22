@@ -14,10 +14,10 @@ import (
 	"testing"
 )
 
-type semanticTestEvaluator func(context.Context, string, []semanticCandidate) (semanticDecision, error)
+type semanticTestEvaluator func(context.Context, string, []semanticCandidate, string) (semanticDecision, error)
 
-func (f semanticTestEvaluator) Evaluate(ctx context.Context, text string, candidates []semanticCandidate) (semanticDecision, error) {
-	return f(ctx, text, candidates)
+func (f semanticTestEvaluator) Evaluate(ctx context.Context, text string, candidates []semanticCandidate, instructions string) (semanticDecision, error) {
+	return f(ctx, text, candidates, instructions)
 }
 
 func semanticFixture(t *testing.T) (*Server, RoutedCall, ChatCompletionRequest) {
@@ -68,7 +68,7 @@ func TestSemanticRoutingModesAndFailureFallback(t *testing.T) {
 			raw, _ := json.Marshal(SemanticRoutingPolicy{Mode: test.mode, MinConfidence: 0.65})
 			routed.Call.Model.Metadata[semanticRoutingMetadataKey] = string(raw)
 			calls := 0
-			server.semanticRouter = semanticTestEvaluator(func(_ context.Context, text string, c []semanticCandidate) (semanticDecision, error) {
+			server.semanticRouter = semanticTestEvaluator(func(_ context.Context, text string, c []semanticCandidate, _ string) (semanticDecision, error) {
 				calls++
 				if text != "synthetic coding question" || len(c) != 3 {
 					t.Errorf("unexpected egress payload")
@@ -82,7 +82,9 @@ func TestSemanticRoutingModesAndFailureFallback(t *testing.T) {
 				}
 				return semanticDecision{Choice: test.choice, Confidence: test.confidence, Model: "jev-1.13.0"}, nil
 			})
-			server.applySemanticRouting(context.Background(), &routed, req, nil)
+			if err := server.applySemanticRouting(context.Background(), &routed, req, nil); err != nil {
+				t.Fatal(err)
+			}
 			if routed.Routes[0].Route.ID != test.wantFirst || len(routed.Routes) != 3 {
 				t.Fatalf("unexpected route order: %+v", routed.Routes)
 			}
@@ -151,11 +153,13 @@ func TestSemanticRoutingSkipsIneligibleRequests(t *testing.T) {
 			server, routed, req := semanticFixture(t)
 			test.mutate(server, &routed, &req)
 			before := append([]RouteSelection(nil), routed.Routes...)
-			server.semanticRouter = semanticTestEvaluator(func(context.Context, string, []semanticCandidate) (semanticDecision, error) {
+			server.semanticRouter = semanticTestEvaluator(func(context.Context, string, []semanticCandidate, string) (semanticDecision, error) {
 				t.Fatal("unexpected evaluation")
 				return semanticDecision{}, nil
 			})
-			server.applySemanticRouting(context.Background(), &routed, req, nil)
+			if err := server.applySemanticRouting(context.Background(), &routed, req, nil); err != nil {
+				t.Fatal(err)
+			}
 			if !reflect.DeepEqual(before, routed.Routes) {
 				t.Fatal("fallback changed route order")
 			}
@@ -172,13 +176,15 @@ func TestSemanticRoutingPreservesResourcePoolAndPriority(t *testing.T) {
 	backup.Route.Priority = 2
 	routed.Routes = []RouteSelection{routed.Routes[0], routed.Routes[1], duplicate, backup}
 	before := append([]RouteSelection(nil), routed.Routes...)
-	server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, c []semanticCandidate) (semanticDecision, error) {
+	server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, c []semanticCandidate, _ string) (semanticDecision, error) {
 		if len(c) != 2 {
 			t.Fatalf("resources not grouped or backup included: %+v", c)
 		}
 		return semanticDecision{Choice: "candidate_2", Confidence: 0.9}, nil
 	})
-	server.applySemanticRouting(context.Background(), &routed, req, nil)
+	if err := server.applySemanticRouting(context.Background(), &routed, req, nil); err != nil {
+		t.Fatal(err)
+	}
 	want := []RouteSelection{before[1], before[2], before[0], before[3]}
 	if !reflect.DeepEqual(want, routed.Routes) {
 		t.Fatalf("pool ordering or backup changed")
@@ -191,7 +197,7 @@ func TestSemanticRoutingHTTPChatAndStream(t *testing.T) {
 			server, _, req := semanticFixture(t)
 			req.Stream = stream
 			calls := 0
-			server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, c []semanticCandidate) (semanticDecision, error) {
+			server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, c []semanticCandidate, _ string) (semanticDecision, error) {
 				calls++
 				for _, candidate := range c {
 					if candidate.Model == "model_1" {
@@ -226,7 +232,7 @@ func TestSemanticRoutingFailoverDoesNotRepeatEvaluation(t *testing.T) {
 				t.Fatal(err)
 			}
 			calls := 0
-			server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, c []semanticCandidate) (semanticDecision, error) {
+			server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, c []semanticCandidate, _ string) (semanticDecision, error) {
 				calls++
 				for _, candidate := range c {
 					if candidate.Model == "model_1" {
@@ -254,7 +260,7 @@ func TestSemanticRoutingCannotRecoverFilteredCandidates(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, c []semanticCandidate) (semanticDecision, error) {
+	server.semanticRouter = semanticTestEvaluator(func(_ context.Context, _ string, c []semanticCandidate, _ string) (semanticDecision, error) {
 		calls++
 		if len(c) != 2 {
 			t.Fatalf("unexpected admitted candidates: %+v", c)
