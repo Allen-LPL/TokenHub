@@ -25,6 +25,13 @@ func (s *Server) serveAdminModelRoutingPolicyPatch(w http.ResponseWriter, r *htt
 		writeError(w, r, err)
 		return
 	}
+	for _, model := range s.store.ListModels() {
+		if model.Name == modelName {
+			saved := modelSemanticRoutingPolicy(model)
+			policy.SemanticRouting = &saved
+			break
+		}
+	}
 	s.recordAdminAudit(r, user, "update", "model_routing_policy", modelName, "", map[string]any{
 		"semantic_routing": policy.SemanticRouting,
 		"strategy":         policy.Strategy,

@@ -36,7 +36,7 @@ func (c Config) validateSemanticRouting() error {
 // applySemanticRouting runs exactly once after admission, privacy processing,
 // protocol filtering, and affinity planning, before either upstream execution path.
 // Failover uses the resulting slice without invoking this evaluator again.
-func (s *Server) applySemanticRouting(ctx context.Context, routed *RoutedCall, req ChatCompletionRequest, headers http.Header) {
+func (s *Server) applyLegacySemanticRouting(ctx context.Context, routed *RoutedCall, req ChatCompletionRequest, headers http.Header) {
 	policy := modelSemanticRoutingPolicy(routed.Call.Model)
 	if !s.config.SemanticRoutingEnabled || policy.Mode == "off" || s.semanticRouter == nil || strings.TrimSpace(s.config.TypeSafeAPIKey) == "" || !slices.Contains(s.config.SemanticRoutingProjects, routed.Call.Project.ID) {
 		return
@@ -99,7 +99,7 @@ func (s *Server) applySemanticRouting(ctx context.Context, routed *RoutedCall, r
 		reason = "insufficient_candidates"
 		return
 	}
-	decision, err = s.semanticRouter.Evaluate(ctx, text, candidates)
+	decision, err = s.semanticRouter.Evaluate(ctx, text, candidates, "")
 	if err != nil {
 		reason = "evaluator_unavailable"
 		return

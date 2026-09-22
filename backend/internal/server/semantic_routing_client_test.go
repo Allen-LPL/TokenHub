@@ -53,7 +53,7 @@ func TestJevRoutingClientWireContract(t *testing.T) {
 		clone.URL.Host = strings.TrimPrefix(upstream.URL, "http://")
 		return http.DefaultTransport.RoundTrip(clone)
 	})
-	decision, err := client.Evaluate(context.Background(), "Write a synthetic test", semanticTestCandidates())
+	decision, err := client.Evaluate(context.Background(), "Write a synthetic test", semanticTestCandidates(), "")
 	if err != nil || decision.Choice != "candidate_2" || decision.InputTokens != 23 || decision.OutputTokens != 2 {
 		t.Fatalf("unexpected decision: %+v %v", decision, err)
 	}
@@ -104,7 +104,7 @@ func TestJevRoutingClientRejectsInvalidResponses(t *testing.T) {
 				calls++
 				return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(string(body)))}, nil
 			})
-			_, err := client.Evaluate(context.Background(), "test", semanticTestCandidates())
+			_, err := client.Evaluate(context.Background(), "test", semanticTestCandidates(), "")
 			if err == nil || calls != 1 {
 				t.Fatalf("expected single failed attempt, calls=%d err=%v", calls, err)
 			}
@@ -123,7 +123,7 @@ func TestJevRoutingClientTimeoutCancellationConcurrencyAndRedirect(t *testing.T)
 				cancel()
 			}
 			started := time.Now()
-			_, err := client.Evaluate(ctx, "test", semanticTestCandidates())
+			_, err := client.Evaluate(ctx, "test", semanticTestCandidates(), "")
 			if err == nil || time.Since(started) > time.Second {
 				t.Fatalf("unbounded request: %v", err)
 			}
@@ -133,7 +133,7 @@ func TestJevRoutingClientTimeoutCancellationConcurrencyAndRedirect(t *testing.T)
 	for range cap(client.slots) {
 		client.slots <- struct{}{}
 	}
-	_, err := client.Evaluate(context.Background(), "test", semanticTestCandidates())
+	_, err := client.Evaluate(context.Background(), "test", semanticTestCandidates(), "")
 	if err == nil || err.Error() != "busy" {
 		t.Fatalf("expected concurrency fallback: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestJevRoutingClientTimeoutCancellationConcurrencyAndRedirect(t *testing.T)
 		calls.Add(1)
 		return &http.Response{StatusCode: 302, Header: http.Header{"Location": []string{"https://untrusted.example.test/"}}, Body: io.NopCloser(strings.NewReader(""))}, nil
 	})
-	_, err = client.Evaluate(context.Background(), "test", semanticTestCandidates())
+	_, err = client.Evaluate(context.Background(), "test", semanticTestCandidates(), "")
 	if err == nil || calls.Load() != 1 {
 		t.Fatalf("redirect followed: calls=%d err=%v", calls.Load(), err)
 	}

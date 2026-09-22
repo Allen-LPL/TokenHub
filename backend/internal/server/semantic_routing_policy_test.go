@@ -93,11 +93,13 @@ func TestSemanticRoutingConfigAndSessionHeader(t *testing.T) {
 		t.Fatal("malformed timeout silently accepted")
 	}
 	server, routed, req := semanticFixture(t)
-	server.semanticRouter = semanticTestEvaluator(func(context.Context, string, []semanticCandidate) (semanticDecision, error) {
+	server.semanticRouter = semanticTestEvaluator(func(context.Context, string, []semanticCandidate, string) (semanticDecision, error) {
 		t.Fatal("session header caused semantic evaluation")
 		return semanticDecision{}, nil
 	})
-	server.applySemanticRouting(context.Background(), &routed, req, http.Header{"X-Tokenhub-Session-Id": []string{"synthetic-session"}})
+	if err := server.applySemanticRouting(context.Background(), &routed, req, http.Header{"X-Tokenhub-Session-Id": []string{"synthetic-session"}}); err != nil {
+		t.Fatal(err)
+	}
 	data, _ := json.Marshal(server.store.ListAuditEvents())
 	if string(data) == "[]" {
 		t.Fatal("missing skip audit")
