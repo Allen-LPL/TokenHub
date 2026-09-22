@@ -16,10 +16,10 @@ const (
 )
 
 type SystemOneRequest struct {
-	Model       string                       `json:"model"`
-	State       json.RawMessage              `json:"state"`
-	Questions   map[string]SystemOneQuestion `json:"questions"`
-	keyRedacted bool
+	Model           string                       `json:"model"`
+	State           json.RawMessage              `json:"state"`
+	Questions       map[string]SystemOneQuestion `json:"questions"`
+	unsafeRedaction bool
 }
 
 type SystemOneQuestion struct {

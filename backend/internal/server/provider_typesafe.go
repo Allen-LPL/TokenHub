@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -35,6 +36,9 @@ func (a TypeSafeAdapter) SystemOne(ctx context.Context, provider Provider, provi
 	}
 	defer response.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(response.Body, (8<<20)+1))
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return SystemOneResponse{}, Usage{MeteringInvalid: true}, err
+	}
 	if err != nil || len(data) > 8<<20 {
 		return SystemOneResponse{}, Usage{MeteringInvalid: true}, invalidSystemOneResponse()
 	}
@@ -95,6 +99,9 @@ func (a TypeSafeAdapter) DiscoverModels(ctx context.Context, req ProviderCreateR
 		} `json:"models"`
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, (1<<20)+1))
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return ProviderCatalogEntry{}, err
+	}
 	if err != nil || len(data) > 1<<20 || json.Unmarshal(data, &payload) != nil || len(payload.Models) == 0 {
 		return ProviderCatalogEntry{}, NewHTTPError(502, "provider_models_invalid_response", "TypeSafe returned an invalid model list")
 	}

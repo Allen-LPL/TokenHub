@@ -59,8 +59,8 @@ func (s *Server) handleSystemOne(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	decision, err := s.evaluateOutboundGuardrails(r.Context(), call.Project.ID, systemOneGuardrailTargets(&req))
-	if err == nil && req.keyRedacted {
-		err = NewHTTPError(http.StatusForbidden, "guardrail_blocked", "Content policy requires redacting a structural key")
+	if err == nil && req.unsafeRedaction {
+		err = NewHTTPError(http.StatusForbidden, "guardrail_blocked", "Content policy requires redacting a structural key or numeric value")
 	}
 	auditPayload := guardrailRequestAuditPayload(req.Model, decision, req)
 	if err != nil {

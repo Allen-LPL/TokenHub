@@ -244,7 +244,7 @@ func TestSystemOneGuardrailRedactionPreservesNumbersAndInspectsRubrics(t *testin
 			target.replace("hidden")
 		}
 	}
-	if !req.keyRedacted {
+	if !req.unsafeRedaction {
 		t.Fatal("structural label redaction must fail closed")
 	}
 }
