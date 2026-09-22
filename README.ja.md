@@ -266,6 +266,12 @@ TokenHub は、実際のエンタープライズ利用からのフィードバ�
       </a>
     </td>
     <td align="center" valign="top" width="12.5%">
+      <a href="https://github.com/longzhang83">
+        <img src="https://avatars.githubusercontent.com/u/38556219?v=4" width="80px" alt="longzhang83" />
+        <br /><sub><b>longzhang83</b></sub>
+      </a>
+    </td>
+    <td align="center" valign="top" width="12.5%">
       <a href="https://github.com/lxm">
         <img src="https://avatars.githubusercontent.com/u/1918195?v=4" width="80px" alt="lxm" />
         <br /><sub><b>lxm</b></sub>
