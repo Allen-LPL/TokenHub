@@ -1209,7 +1209,6 @@ export function AdminConsole({ defaultBaseURL }: { defaultBaseURL: string }) {
           mode="create"
           api={api}
           catalog={data.providerCatalog}
-          standardModels={data.models}
           providerModels={data.providerModels}
           resources={data.providerResources}
           providerAdapters={data.providerAdapters}
@@ -1235,7 +1234,6 @@ export function AdminConsole({ defaultBaseURL }: { defaultBaseURL: string }) {
           provider={providerEditItem}
           api={api}
           catalog={data.providerCatalog}
-          standardModels={data.models}
           providerModels={data.providerModels}
           routes={data.routes}
           resources={data.providerResources.filter((resource) => resource.provider_id === providerEditItem.id)}
