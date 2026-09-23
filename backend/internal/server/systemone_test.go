@@ -203,7 +203,10 @@ func TestSystemOneScoreLegendValues(t *testing.T) {
 					payload := strings.Replace(systemOneFixtureResponse, entry.old, fmt.Sprintf("%q:%s", entry.key, tt.value), 1)
 					var response SystemOneResponse
 					if err := json.Unmarshal([]byte(payload), &response); err != nil {
-						t.Fatal(err)
+						if tt.valid {
+							t.Fatal(err)
+						}
+						return
 					}
 					req := systemOneTestRequest(t)
 					if tt.valid {
@@ -224,13 +227,20 @@ func TestSystemOneScoreLegendValues(t *testing.T) {
 
 func TestSystemOneGuardrailRedactionPreservesNumbersAndInspectsRubrics(t *testing.T) {
 	req := systemOneTestRequest(t)
-	for _, target := range systemOneGuardrailTargets(&req) {
+	batch, err := systemOneGuardrailTargets(&req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range batch.targets {
 		if target.fragment.Text == "Return funds" {
 			target.replace("[masked]")
 		}
 		if target.fragment.Text == "Please refund this order" {
 			target.replace("[masked state]")
 		}
+	}
+	if err := batch.apply(); err != nil {
+		t.Fatal(err)
 	}
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -239,7 +249,11 @@ func TestSystemOneGuardrailRedactionPreservesNumbersAndInspectsRubrics(t *testin
 	if !strings.Contains(string(data), `9007199254740993`) || strings.Contains(string(data), "Return funds") || strings.Contains(string(data), "Please refund") {
 		t.Fatalf("redacted request=%s", data)
 	}
-	for _, target := range systemOneGuardrailTargets(&req) {
+	batch, err = systemOneGuardrailTargets(&req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range batch.targets {
 		if target.fragment.Text == "refund" {
 			target.replace("hidden")
 		}

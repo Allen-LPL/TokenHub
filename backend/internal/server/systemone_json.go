@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
 	"math/big"
 	"reflect"
@@ -10,13 +9,11 @@ import (
 
 func systemOneEntriesEqual(left, right json.RawMessage) bool {
 	decode := func(data json.RawMessage) (any, error) {
-		decoder := json.NewDecoder(bytes.NewReader(data))
-		decoder.UseNumber()
-		var value any
-		if err := decoder.Decode(&value); err != nil {
+		value, err := (&systemOneJSONBudget{}).decode(data, systemOneMaxJSONDepth)
+		if err != nil {
 			return nil, err
 		}
-		return normalizeSystemOneJSON(value), nil
+		return normalizeSystemOneJSON(value)
 	}
 	a, err := decode(left)
 	if err != nil {
@@ -26,23 +23,34 @@ func systemOneEntriesEqual(left, right json.RawMessage) bool {
 	return err == nil && reflect.DeepEqual(a, b)
 }
 
-func normalizeSystemOneJSON(value any) any {
+func normalizeSystemOneJSON(value any) (any, error) {
 	switch typed := value.(type) {
 	case json.Number:
 		return normalizeSystemOneNumber(typed)
 	case []any:
 		for index := range typed {
-			typed[index] = normalizeSystemOneJSON(typed[index])
+			var err error
+			typed[index], err = normalizeSystemOneJSON(typed[index])
+			if err != nil {
+				return nil, err
+			}
 		}
 	case map[string]any:
 		for key := range typed {
-			typed[key] = normalizeSystemOneJSON(typed[key])
+			var err error
+			typed[key], err = normalizeSystemOneJSON(typed[key])
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-	return value
+	return value, nil
 }
 
-func normalizeSystemOneNumber(value json.Number) json.Number {
+func normalizeSystemOneNumber(value json.Number) (json.Number, error) {
+	if !systemOneExponentAllowed(value) {
+		return "", errSystemOneJSONLimit
+	}
 	mantissa := string(value)
 	sign := ""
 	if strings.HasPrefix(mantissa, "-") {
@@ -50,7 +58,9 @@ func normalizeSystemOneNumber(value json.Number) json.Number {
 	}
 	exponent := new(big.Int)
 	if index := strings.IndexAny(mantissa, "eE"); index >= 0 {
-		exponent.SetString(mantissa[index+1:], 10)
+		if _, ok := exponent.SetString(mantissa[index+1:], 10); !ok {
+			return "", errSystemOneJSONLimit
+		}
 		mantissa = mantissa[:index]
 	}
 	if index := strings.IndexByte(mantissa, '.'); index >= 0 {
@@ -59,10 +69,10 @@ func normalizeSystemOneNumber(value json.Number) json.Number {
 	}
 	mantissa = strings.TrimLeft(mantissa, "0")
 	if mantissa == "" {
-		return json.Number("0")
+		return json.Number("0"), nil
 	}
 	coefficient := strings.TrimRight(mantissa, "0")
 	exponent.Add(exponent, big.NewInt(int64(len(mantissa)-len(coefficient))))
 	// Keep exponents symbolic; expanding an arbitrary JSON exponent can exhaust memory.
-	return json.Number(sign + coefficient + "e" + exponent.String())
+	return json.Number(sign + coefficient + "e" + exponent.String()), nil
 }

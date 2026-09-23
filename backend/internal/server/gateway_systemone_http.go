@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 	"time"
+
+	"tokenhub/backend/internal/guardrails"
 )
 
 func (s *Server) handleSystemOne(w http.ResponseWriter, r *http.Request) {
@@ -58,9 +60,16 @@ func (s *Server) handleSystemOne(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	decision, err := s.evaluateOutboundGuardrails(r.Context(), call.Project.ID, systemOneGuardrailTargets(&req))
+	batch, err := systemOneGuardrailTargets(&req)
+	var decision guardrails.Decision
+	if err == nil {
+		decision, err = s.evaluateOutboundGuardrails(r.Context(), call.Project.ID, batch.targets)
+	}
 	if err == nil && req.unsafeRedaction {
 		err = NewHTTPError(http.StatusForbidden, "guardrail_blocked", "Content policy requires redacting a structural key or numeric value")
+	}
+	if err == nil {
+		err = batch.apply()
 	}
 	auditPayload := guardrailRequestAuditPayload(req.Model, decision, req)
 	if err != nil {

@@ -48,7 +48,11 @@ curl https://tokenhub.example/v1/systemone \
 
 `state` 必填，接受字符串、JSON 对象、数组或 `null`。每个问题可以省略 `instructions`，也可以传入字符串、对象、数组或 `null`；判断标准中的描述支持相同类型。转发时保留省略字段与显式 `null` 的区别，与 [SDK 0.6.0 类型定义](https://github.com/typesafe-ai/typesafe-sdk-js/blob/v0.6.0/src/types.ts) 一致。嵌套值保留 JSON 数值精度。多个问题共享状态、独立评估。低置信度属于正常结果，会原样返回，不自动重试或升级到其他模型。应用自行设定接受阈值。
 
-网关接受 1–1,024 个问题，每个问题最多 4,096 个判断标准，每个 JSON 条目最多嵌套 64 层容器，同时受通用请求体大小限制。目录按上游文档记录 64,000 token 总上下文和 32,000 token 的「状态加最大问题」限制。TokenHub 为配额准入估算 token，依赖 TypeSafe 按其 tokenizer 校验实际上下文。流式参数和聊天专属字段会被拒绝。JSON 格式错误或未知字段返回 `400`，原语语义校验失败返回 `422`。
+网关接受 1–1,024 个问题，每个问题最多 4,096 个判断标准，每个 JSON 条目最多嵌套 64 层容器，同时受通用请求体大小限制。
+
+每个 System One 请求或响应最多 8 MiB，整个载荷累计最多 32,768 个 JSON 节点，节点包括容器、标量值和对象键。数字指数部分最多 128 位，包含前导零。在解码为 map 或结构体前，网关会拒绝重复对象键（包括转义后相同的键）及协议字段名的大小写变体。钩子载荷适用相同检查。请求 JSON 超限返回 `400`；全请求累计安全检查目标超过 32,768 个时返回 `422`。无效上游或钩子响应返回脱敏 `502`，仅保留可独立验证且无歧义的有效用量。
+
+目录按上游文档记录 64,000 token 总上下文和 32,000 token 的「状态加最大问题」限制。TokenHub 为配额准入估算 token，依赖 TypeSafe 按其 tokenizer 校验实际上下文。流式参数和聊天专属字段会被拒绝。JSON 格式错误或未知字段返回 `400`，原语语义校验失败返回 `422`。
 
 ## JavaScript SDK 兼容范围
 
@@ -78,6 +82,6 @@ TOKENHUB_MODEL=jev-1.13.0 npm run test:systemone
 
 ## 上线与回滚
 
-先配置专用项目 Key 和明确的 Jev 路由。应用依赖评分前，使用目标语言和业务的标注样本验证效果，并观察延迟、上游错误、实际用量和成本。本次接入不增加数据库迁移或部署环境变量。禁用对外模型或路由即可停止流量；禁用目录插件只会从 Provider 新增页移除 TypeSafe，不会禁用已有路由。
+先配置专用项目 Key 和明确的 Jev 路由。应用依赖评分前，使用目标语言和业务的标注样本验证效果，并观察延迟、上游错误、实际用量和成本。本次接入不增加数据库迁移或部署环境变量。禁用对外模型或路由即可停止流量。禁用 `tokenhub.provider.typesafe` 会同时移除目录条目和可执行适配器，已有 TypeSafe 路由随之不可用；仅有 TypeSafe 路由的模型调用 `/v1/systemone` 时返回 `501 provider_capability_not_supported`。重新启用插件后，适配器恢复，已有路由配置可继续使用。若只需停止部分流量，应禁用对应模型或路由。
 
 协议参考：[HTTP API](https://docs.typesafe.ai/api)、[高级输入](https://docs.typesafe.ai/primitives/advanced)、[置信度](https://docs.typesafe.ai/confidence)，以及 TokenHub 的 `/openapi.json` 契约。

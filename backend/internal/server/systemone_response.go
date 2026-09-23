@@ -15,14 +15,7 @@ func decodeSystemOneResponse(data []byte) (SystemOneResponse, error) {
 	if err := json.Unmarshal(data, &response); err != nil {
 		// A type error can leave partially assigned token pointers. Read usage
 		// independently so valid usage survives malformed answers without inventing tokens.
-		response.Usage = SystemOneUsage{}
-		var envelope struct {
-			Usage json.RawMessage `json:"usage"`
-		}
-		var usage SystemOneUsage
-		if json.Unmarshal(data, &envelope) == nil && json.Unmarshal(envelope.Usage, &usage) == nil {
-			response.Usage = usage
-		}
+		response.Usage = systemOneIndependentUsage(data)
 		return response, invalidSystemOneResponse()
 	}
 	return response, nil
@@ -49,6 +42,9 @@ func (response SystemOneResponse) validate(req SystemOneRequest) error {
 
 func (response SystemOneResponse) validateWithLegendRequest(req, legendRequest SystemOneRequest) error {
 	if strings.TrimSpace(response.Model) == "" || response.meteredUsage().MeteringInvalid || len(response.Answers) != len(req.Questions) {
+		return invalidSystemOneResponse()
+	}
+	if len(response.Answers) > systemOneMaxQuestions || validateSystemOneJSONValue(response) != nil {
 		return invalidSystemOneResponse()
 	}
 	for id, question := range req.Questions {

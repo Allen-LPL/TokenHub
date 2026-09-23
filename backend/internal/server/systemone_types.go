@@ -44,6 +44,13 @@ type SystemOneInvoker interface {
 }
 
 func (r *SystemOneRequest) UnmarshalJSON(data []byte) error {
+	decoded, err := (&systemOneJSONBudget{}).decode(data, systemOneMaxEnvelopeDepth)
+	if err != nil {
+		return err
+	}
+	if err := systemOneCanonicalFields(decoded, false); err != nil {
+		return err
+	}
 	type wire SystemOneRequest
 	var value wire
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -58,6 +65,9 @@ func (r *SystemOneRequest) UnmarshalJSON(data []byte) error {
 func (r SystemOneRequest) validate() error {
 	if strings.TrimSpace(r.Model) == "" {
 		return NewHTTPError(http.StatusBadRequest, "missing_model", "model is required")
+	}
+	if len(r.Questions) > systemOneMaxQuestions || validateSystemOneJSONValue(r) != nil {
+		return systemOneInvalid("request JSON exceeds resource limits or contains duplicate members")
 	}
 	if !systemOneEntry(r.State, true) {
 		return systemOneInvalid("state must be a string, object, array, or null")

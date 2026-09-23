@@ -48,7 +48,11 @@ Successful responses include TokenHub's `x-request-id` and, when reported by the
 
 `state` is required and accepts a string, JSON object, array, or `null`. Each question may omit `instructions` or provide a string, object, array, or `null`; criterion descriptions accept the same types. Omitted fields and explicit `null` values remain distinct when forwarded, following the [SDK 0.6.0 types](https://github.com/typesafe-ai/typesafe-sdk-js/blob/v0.6.0/src/types.ts). Nested values retain JSON numeric precision. Questions share state and are evaluated independently. Low confidence is a normal result, returned without automatic retry or escalation. Applications define their own acceptance thresholds.
 
-The gateway accepts 1–1,024 questions, at most 4,096 criteria per question, and at most 64 nested container levels per JSON entry. Normal request-body limits also apply. The catalog records a 64,000-token total context and a 32,000-token state-plus-largest-question limit from the upstream model documentation. TokenHub estimates tokens for quota admission; TypeSafe remains authoritative for tokenizer-specific context validation. Streaming and chat-only fields are rejected. Invalid JSON or unknown fields return `400`; invalid primitive semantics return `422`.
+The gateway accepts 1–1,024 questions, at most 4,096 criteria per question, and at most 64 nested container levels per JSON entry. Normal request-body limits also apply.
+
+Each System One request or response is limited to 8 MiB and 32,768 JSON nodes, counting containers, scalar values, and object keys across the entire payload. Numeric exponents may contain at most 128 digits, including leading zeros. Duplicate object members (including escaped spellings of the same key) and alternate casing of protocol field names are rejected before decoding into maps or structs. The same checks apply to hook payloads. Request JSON limit violations return `400`; exceeding the shared 32,768 guardrail-target limit returns `422`. Invalid upstream or hook responses return a sanitized `502`; only independently valid, unambiguous usage is retained.
+
+The catalog records a 64,000-token total context and a 32,000-token state-plus-largest-question limit from the upstream model documentation. TokenHub estimates tokens for quota admission; TypeSafe remains authoritative for tokenizer-specific context validation. Streaming and chat-only fields are rejected. Invalid JSON or unknown fields return `400`; invalid primitive semantics return `422`.
 
 ## JavaScript SDK compatibility
 
@@ -78,6 +82,6 @@ The catalog snapshot verified on **2026-09-19** uses **USD 0.042 per million inp
 
 ## Rollout and rollback
 
-Start with a dedicated project key and an explicit Jev route. Validate labeled examples for the intended language and task before application decisions depend on the scores. Observe latency, upstream errors, actual usage, and costs. This integration adds no database migration or deployment environment variable. Disable the published model or its routes to stop traffic. Disabling the catalog plugin only removes it from Provider setup; it does not disable existing routes.
+Start with a dedicated project key and an explicit Jev route. Validate labeled examples for the intended language and task before application decisions depend on the scores. Observe latency, upstream errors, actual usage, and costs. This integration adds no database migration or deployment environment variable. Disable the published model or its routes to stop traffic. Disabling `tokenhub.provider.typesafe` removes both its catalog entry and executable adapter. Existing TypeSafe routes then become unavailable; a model with only TypeSafe routes returns `501 provider_capability_not_supported` on `/v1/systemone`. Re-enabling the plugin restores the adapter for the existing route configuration. Disable individual models or routes when only selected traffic should stop.
 
 Protocol references: [HTTP API](https://docs.typesafe.ai/api), [advanced inputs](https://docs.typesafe.ai/primitives/advanced), [confidence](https://docs.typesafe.ai/confidence), and TokenHub's live `/openapi.json` contract.
