@@ -222,6 +222,12 @@ TokenHub grows through product feedback, gateway integrations, documentation, te
       </a>
     </td>
     <td align="center" valign="top" width="12.5%">
+      <a href="https://github.com/jackiesre721">
+        <img src="https://avatars.githubusercontent.com/u/8868514?v=4" width="80px" alt="jackiesre721" />
+        <br /><sub><b>jackiesre721</b></sub>
+      </a>
+    </td>
+    <td align="center" valign="top" width="12.5%">
       <a href="https://github.com/myssl">
         <img src="https://avatars.githubusercontent.com/u/27838738?v=4" width="80px" alt="myssl" />
         <br /><sub><b>myssl</b></sub>
@@ -239,14 +245,14 @@ TokenHub grows through product feedback, gateway integrations, documentation, te
         <br /><sub><b>hoorayman</b></sub>
       </a>
     </td>
+  </tr>
+  <tr>
     <td align="center" valign="top" width="12.5%">
       <a href="https://github.com/debin-ge">
         <img src="https://avatars.githubusercontent.com/u/21329997?v=4" width="80px" alt="debin-ge" />
         <br /><sub><b>debin-ge</b></sub>
       </a>
     </td>
-  </tr>
-  <tr>
     <td align="center" valign="top" width="12.5%">
       <a href="https://github.com/ocass-chen">
         <img src="https://avatars.githubusercontent.com/u/172055494?v=4" width="80px" alt="ocass-chen" />
@@ -257,6 +263,12 @@ TokenHub grows through product feedback, gateway integrations, documentation, te
       <a href="https://github.com/AnxForever">
         <img src="https://avatars.githubusercontent.com/u/130662349?v=4" width="80px" alt="AnxForever" />
         <br /><sub><b>AnxForever</b></sub>
+      </a>
+    </td>
+    <td align="center" valign="top" width="12.5%">
+      <a href="https://github.com/DeanHH">
+        <img src="https://avatars.githubusercontent.com/u/1842770?v=4" width="80px" alt="DeanHH" />
+        <br /><sub><b>DeanHH</b></sub>
       </a>
     </td>
     <td align="center" valign="top" width="12.5%">
@@ -283,6 +295,8 @@ TokenHub grows through product feedback, gateway integrations, documentation, te
         <br /><sub><b>susunola</b></sub>
       </a>
     </td>
+  </tr>
+  <tr>
     <td align="center" valign="top" width="12.5%">
       <a href="https://github.com/desertsurge">
         <img src="https://avatars.githubusercontent.com/u/1735018?v=4" width="80px" alt="desertsurge" />
