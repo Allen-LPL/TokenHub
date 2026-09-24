@@ -64,7 +64,7 @@ func (s *Server) runGatewayProviderCallHooksOutput(ctx context.Context, call Cal
 	handled := false
 	for _, result := range report.Results {
 		if patch, ok := result.Writes[pluginmeta.DataProviderResponse]; ok {
-			if err := decodeGatewayHookPayload(patch.Value, &response, "gateway_hook_response_invalid", "Gateway plugin returned an invalid response"); err != nil {
+			if err := decodeGatewayHookResponsePayload(patch.Value, &response, protocol); err != nil {
 				return nil, Usage{}, false, &ProviderInvocationError{Err: err, Disposition: ProviderErrorPolicy}
 			}
 			if stream == nil {

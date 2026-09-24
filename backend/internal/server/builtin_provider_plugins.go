@@ -281,6 +281,9 @@ func registerBuiltinProviderAdapters(registry *AdapterRegistry, adapters map[str
 	}); err != nil {
 		return err
 	}
+	if err := register("tokenhub.provider.typesafe", "TypeSafe", typeSafeBuiltinAdapter(adapters[providerTypeSafe])); err != nil {
+		return err
+	}
 	if err := register("tokenhub.provider.dify", "Dify", builtinProviderAdapter{
 		providerType: ProviderDify,
 		adapter:      adapters[ProviderDify],

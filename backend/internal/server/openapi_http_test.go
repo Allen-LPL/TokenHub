@@ -582,6 +582,7 @@ func providerRoutedOperation(operation gatewayOperation) bool {
 		"/v1/responses/compact",
 		"/v1/messages",
 		"/v1/embeddings",
+		"/v1/systemone",
 		"/v1/images/generations",
 		"/v1/images/edits",
 		"/v1beta/models/{model}:generateContent",
@@ -594,7 +595,8 @@ func providerRoutedOperation(operation gatewayOperation) bool {
 
 func providerCapabilityOperation(operation gatewayOperation) bool {
 	switch operation.Path {
-	case "/v1/responses",
+	case "/v1/systemone",
+		"/v1/responses",
 		"/v1/responses/compact",
 		"/v1/messages",
 		"/v1beta/models/{model}:generateContent",
@@ -613,6 +615,7 @@ func modelAccessControlledOperation(operation gatewayOperation) bool {
 		"/v1/messages",
 		"/v1/messages/count_tokens",
 		"/v1/embeddings",
+		"/v1/systemone",
 		"/v1/images/generations",
 		"/v1/images/edits",
 		"/v1beta/models/{model}:generateContent",
